@@ -1,0 +1,107 @@
+/* How It Works Section Styles */
+.how-it-works-section {
+  padding: 5rem 0;
+  background-color: #f9f9f9;
+}
+
+.how-it-works-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.how-it-works-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.how-it-works-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .how-it-works-title {
+    font-size: 3rem;
+  }
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .steps-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.step-item {
+  text-align: center;
+  position: relative;
+}
+
+.step-number {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background-color: #dd3333;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  box-shadow: 0 4px 6px rgba(221, 51, 51, 0.2);
+}
+
+.step-icon-wrapper {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background-color: rgba(221, 51, 51, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  border: 2px solid rgba(221, 51, 51, 0.2);
+}
+
+.step-icon {
+  font-size: 1.75rem;
+  color: #dd3333;
+}
+
+.step-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+}
+
+.step-description {
+  font-size: 0.875rem;
+  color: #666666;
+  line-height: 1.6;
+}
+
+/* Add connecting lines between steps on desktop */
+@media (min-width: 768px) {
+  .step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 1.5rem;
+    left: 60%;
+    width: 80%;
+    height: 2px;
+    background: linear-gradient(to right, #dd3333 0%, rgba(221, 51, 51, 0.3) 100%);
+    z-index: -1;
+  }
+}

@@ -1,0 +1,296 @@
+/* LiveTrackingMap Component Styles */
+.live-tracking-container {
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tracking-loading {
+  text-align: center;
+  padding: 3rem;
+  color: #666666;
+}
+
+.tracking-loading i {
+  font-size: 2.5rem;
+  color: #0693e3;
+  margin-bottom: 1rem;
+}
+
+.tracking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.tracking-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333333;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.tracking-title i {
+  color: #dd3333;
+}
+
+.tracking-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #fff3e0;
+  color: #f57c00;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-pulse {
+  animation: pulse 2s infinite;
+  font-size: 0.625rem;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Driver Info Card */
+.driver-info-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #0693e3 0%, #3388dd 100%);
+  color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(6, 147, 227, 0.2);
+}
+
+.driver-avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.driver-avatar i {
+  font-size: 2rem;
+}
+
+.driver-details {
+  flex: 1;
+}
+
+.driver-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.vehicle-number {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.eta-info {
+  text-align: right;
+}
+
+.eta-label {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.eta-time {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+/* Map Container */
+.map-container {
+  margin-bottom: 1.5rem;
+}
+
+.map-placeholder {
+  width: 100%;
+  height: 400px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f5e9 100%);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #d0d0d0;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-marker {
+  width: 4rem;
+  height: 4rem;
+  background-color: #dd3333;
+  color: #ffffff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(221, 51, 51, 0.3);
+  margin-bottom: 1rem;
+}
+
+.map-marker i {
+  font-size: 1.5rem;
+  transform: rotate(45deg);
+}
+
+.map-info {
+  font-size: 0.875rem;
+  color: #666666;
+  margin: 1rem 0;
+}
+
+.truck-icon-container {
+  position: absolute;
+  bottom: 2rem;
+  right: 2rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  background-color: #dd3333;
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(221, 51, 51, 0.3);
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.truck-icon {
+  font-size: 1.5rem;
+}
+
+.map-note {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #999999;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.map-note i {
+  color: #0693e3;
+}
+
+/* Action Buttons */
+.tracking-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.action-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-button i {
+  font-size: 1.25rem;
+}
+
+.action-button.primary {
+  background-color: #dd3333;
+  color: #ffffff;
+}
+
+.action-button.primary:hover {
+  background-color: #c02828;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(221, 51, 51, 0.3);
+}
+
+.action-button.secondary {
+  background-color: #f5f5f5;
+  color: #333333;
+  border: 2px solid #e0e0e0;
+}
+
+.action-button.secondary:hover {
+  background-color: #0693e3;
+  color: #ffffff;
+  border-color: #0693e3;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(6, 147, 227, 0.2);
+}
+
+@media (max-width: 768px) {
+  .live-tracking-container {
+    padding: 1.5rem;
+  }
+
+  .driver-info-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .driver-details,
+  .eta-info {
+    text-align: center;
+  }
+
+  .tracking-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .map-placeholder {
+    height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tracking-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
