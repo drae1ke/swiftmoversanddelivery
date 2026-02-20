@@ -45,6 +45,17 @@ const driverSchema = new mongoose.Schema(
       type: Number,
       default: 100,
     },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [0, 0],
+      },
+    },
   },
   {
     timestamps: true,

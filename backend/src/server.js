@@ -11,6 +11,9 @@ const authRoutes = require('./routes/authRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const clientRoutes = require('./routes/clientRoutes');
+const propertyRoutes = require('./routes/propertyRoutes');
+const relocationRoutes = require('./routes/relocationRoutes');
 
 const app = express();
 
@@ -32,6 +35,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/client', clientRoutes);
+app.use('/api/properties', propertyRoutes);
+app.use('/api/relocations', relocationRoutes);
 
 // Global error handler (simple)
 app.use((err, req, res, next) => {

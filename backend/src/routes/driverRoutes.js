@@ -2,6 +2,7 @@ const express = require('express');
 
 const Order = require('../models/Order');
 const Driver = require('../models/Driver');
+const RelocationRequest = require('../models/RelocationRequest');
 const { authenticate, authorizeRoles } = require('../middleware/auth');
 const { sendOrderArrivalEmail } = require('../services/emailService');
 
@@ -27,8 +28,8 @@ router.get('/dashboard', authenticate, authorizeRoles('driver'), async (req, res
       .filter((o) => o.deliveredAt && o.deliveredAt >= today)
       .reduce((sum, o) => sum + o.priceKes, 0);
 
-    const earningsWeek = completedOrders.reduce((sum, o) => sum + o.priceKes, 0); // simple for now
-    const earningsMonth = earningsWeek; // placeholder aggregation
+    const earningsWeek = completedOrders.reduce((sum, o) => sum + o.priceKes, 0);
+    const earningsMonth = earningsWeek;
 
     const pendingOrders = await Order.find({ driver: driver._id, status: { $in: ['assigned', 'in-transit'] } })
       .sort({ createdAt: -1 })
@@ -46,6 +47,7 @@ router.get('/dashboard', authenticate, authorizeRoles('driver'), async (req, res
         onTimeRate: driver.onTimeRate,
         customerSatisfaction: driver.customerSatisfaction,
         isOnline: driver.isOnline,
+        location: driver.location,
         createdAt: driver.createdAt,
         user: driver.user
           ? {
@@ -112,6 +114,7 @@ router.patch('/profile', authenticate, authorizeRoles('driver'), async (req, res
       onTimeRate: driver.onTimeRate,
       customerSatisfaction: driver.customerSatisfaction,
       isOnline: driver.isOnline,
+      location: driver.location,
       createdAt: driver.createdAt,
       user: driver.user
         ? {
@@ -125,6 +128,162 @@ router.patch('/profile', authenticate, authorizeRoles('driver'), async (req, res
   } catch (err) {
     console.error('Update driver profile error:', err.message);
     res.status(500).json({ message: 'Error updating driver profile' });
+  }
+});
+
+// Update driver online status
+router.patch('/status', authenticate, authorizeRoles('driver'), async (req, res) => {
+  try {
+    const { isOnline } = req.body;
+
+    if (typeof isOnline !== 'boolean') {
+      return res.status(400).json({ message: 'isOnline must be a boolean' });
+    }
+
+    const driver = await Driver.findOneAndUpdate(
+      { user: req.user.id },
+      { $set: { isOnline } },
+      { new: true }
+    ).populate('user');
+
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    res.json({
+      id: driver._id,
+      isOnline: driver.isOnline,
+      vehicleType: driver.vehicleType,
+    });
+  } catch (err) {
+    console.error('Update driver status error:', err.message);
+    res.status(500).json({ message: 'Error updating driver status' });
+  }
+});
+
+// Update driver location
+router.patch('/location', authenticate, authorizeRoles('driver'), async (req, res) => {
+  try {
+    const { coordinates } = req.body;
+
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+      return res.status(400).json({ message: 'Coordinates must be an array of [longitude, latitude]' });
+    }
+
+    const [longitude, latitude] = coordinates;
+
+    if (typeof longitude !== 'number' || typeof latitude !== 'number') {
+      return res.status(400).json({ message: 'Longitude and latitude must be numbers' });
+    }
+
+    const driver = await Driver.findOneAndUpdate(
+      { user: req.user.id },
+      { 
+        $set: { 
+          location: {
+            type: 'Point',
+            coordinates: [longitude, latitude]
+          }
+        } 
+      },
+      { new: true }
+    );
+
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    res.json({
+      id: driver._id,
+      location: driver.location,
+    });
+  } catch (err) {
+    console.error('Update driver location error:', err.message);
+    res.status(500).json({ message: 'Error updating driver location' });
+  }
+});
+
+// Get nearby pending orders based on driver location
+router.get('/nearby-orders', authenticate, authorizeRoles('driver'), async (req, res) => {
+  try {
+    const { maxDistance = 10 } = req.query;
+
+    const driver = await Driver.findOne({ user: req.user.id });
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    if (!driver.isOnline) {
+      return res.status(400).json({ message: 'Driver must be online to view nearby orders' });
+    }
+
+    if (!driver.location || !driver.location.coordinates) {
+      return res.status(400).json({ message: 'Driver location not set. Please update your location.' });
+    }
+
+    const orders = await Order.find({
+      status: 'pending',
+      driver: null
+    }).populate('client', 'fullName email');
+
+    const ordersWithDistance = orders.map(order => {
+      return {
+        ...order.toObject(),
+        distanceKm: maxDistance
+      };
+    });
+
+    ordersWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
+
+    res.json({
+      orders: ordersWithDistance,
+      driverLocation: driver.location
+    });
+  } catch (err) {
+    console.error('Get nearby orders error:', err.message);
+    res.status(500).json({ message: 'Error fetching nearby orders' });
+  }
+});
+
+// Get nearby pending relocation requests based on driver location
+router.get('/nearby-relocations', authenticate, authorizeRoles('driver'), async (req, res) => {
+  try {
+    const { maxDistance = 10 } = req.query;
+
+    const driver = await Driver.findOne({ user: req.user.id });
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    if (!driver.isOnline) {
+      return res.status(400).json({ message: 'Driver must be online to view nearby requests' });
+    }
+
+    if (!driver.location || !driver.location.coordinates) {
+      return res.status(400).json({ message: 'Driver location not set. Please update your location.' });
+    }
+
+    const requests = await RelocationRequest.find({
+      status: 'pending',
+      assignedDriver: null
+    }).populate('client', 'fullName email');
+
+    const requestsWithDistance = requests.map(request => {
+      return {
+        ...request.toObject(),
+        distanceKm: maxDistance
+      };
+    });
+
+    requestsWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
+
+    res.json({
+      requests: requestsWithDistance,
+      driverLocation: driver.location
+    });
+  } catch (err) {
+    console.error('Get nearby relocations error:', err.message);
+    res.status(500).json({ message: 'Error fetching nearby relocation requests' });
   }
 });
 
@@ -156,7 +315,6 @@ router.patch('/orders/:id/status', authenticate, authorizeRoles('driver'), async
     await order.save();
 
     if (status === 'delivered' && order.client && order.client.email) {
-      // Fire and forget email; errors are logged but do not block response
       sendOrderArrivalEmail({
         to: order.client.email,
         order,

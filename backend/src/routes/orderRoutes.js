@@ -274,4 +274,41 @@ router.get('/pricing/weight-bands', async (req, res) => {
   }
 });
 
+// Track order by full or partial _id (public with auth)
+router.get('/track/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    let order = null;
+
+    // Try exact match first
+    if (id.match(/^[a-f\d]{24}$/i)) {
+      order = await Order.findById(id)
+        .populate('client', 'fullName')
+        .populate({ path: 'driver', populate: { path: 'user', select: 'fullName' } });
+    }
+
+    // If not found, try partial match on hex suffix (last 8 chars)
+    if (!order && id.length >= 6) {
+      const orders = await Order.find()
+        .populate('client', 'fullName')
+        .populate({ path: 'driver', populate: { path: 'user', select: 'fullName' } })
+        .limit(200);
+      order = orders.find((o) => o._id.toString().endsWith(id.toLowerCase()));
+    }
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Only allow client who owns it, or admin
+    if (req.user.role !== 'admin' && order.client?._id?.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    res.json(order);
+  } catch (err) {
+    console.error('Track order error:', err.message);
+    res.status(500).json({ message: 'Error tracking order' });
+  }
+});
+
 module.exports = router;
+

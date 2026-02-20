@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['client', 'driver', 'admin'],
+      enum: ['client', 'driver', 'admin', 'landlord'],
       default: 'client',
     },
     passwordResetToken: {

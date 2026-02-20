@@ -4,6 +4,10 @@ const Order = require('../models/Order');
 const Driver = require('../models/Driver');
 const User = require('../models/User');
 const PricingConfig = require('../models/PricingConfig');
+const Landlord = require('../models/Landlord');
+const Property = require('../models/Property');
+const RelocationRequest = require('../models/RelocationRequest');
+const Admin = require('../models/Admin');
 const { authenticate, authorizeRoles } = require('../middleware/auth');
 
 const router = express.Router();
@@ -228,6 +232,226 @@ router.put('/pricing/weight-bands', authenticate, authorizeRoles('admin'), async
   } catch (err) {
     console.error('Admin update pricing config error:', err.message);
     res.status(500).json({ message: 'Error updating pricing configuration' });
+  }
+});
+
+// ──────────────────────────────────────────────────
+// USER MANAGEMENT
+// ──────────────────────────────────────────────────
+
+// List all users (paginated, searchable, filterable by role)
+router.get('/users', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const { search, role } = req.query;
+
+    const filter = {};
+    if (role && role !== 'all') filter.role = role;
+    if (search) {
+      filter.$or = [
+        { fullName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).select('-passwordHash -passwordResetToken -passwordResetExpires'),
+      User.countDocuments(filter),
+    ]);
+
+    res.json({ data: users, page, total, totalPages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error('Admin list users error:', err.message);
+    res.status(500).json({ message: 'Error loading users' });
+  }
+});
+
+// Get single user
+router.get('/users/:id', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-passwordHash -passwordResetToken -passwordResetExpires');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    console.error('Admin get user error:', err.message);
+    res.status(500).json({ message: 'Error loading user' });
+  }
+});
+
+// Update user (role, name)
+router.patch('/users/:id', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { fullName, role } = req.body;
+    const update = {};
+    if (fullName && typeof fullName === 'string') update.fullName = fullName.trim();
+    if (role && ['client', 'driver', 'admin', 'landlord'].includes(role)) update.role = role;
+
+    const user = await User.findByIdAndUpdate(req.params.id, { $set: update }, { new: true })
+      .select('-passwordHash -passwordResetToken -passwordResetExpires');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    console.error('Admin update user error:', err.message);
+    res.status(500).json({ message: 'Error updating user' });
+  }
+});
+
+// Delete user + cascade
+router.delete('/users/:id', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Prevent self-deletion
+    if (user._id.toString() === req.user.userId) {
+      return res.status(400).json({ message: 'You cannot delete your own account' });
+    }
+
+    // Cascade delete related docs
+    await Promise.all([
+      Driver.deleteMany({ user: user._id }),
+      Landlord.deleteMany({ user: user._id }),
+      Admin.deleteMany({ user: user._id }),
+    ]);
+    await User.findByIdAndDelete(user._id);
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    console.error('Admin delete user error:', err.message);
+    res.status(500).json({ message: 'Error deleting user' });
+  }
+});
+
+// ──────────────────────────────────────────────────
+// LANDLORD MANAGEMENT
+// ──────────────────────────────────────────────────
+
+router.get('/landlords', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const landlords = await Landlord.find().populate('user', '-passwordHash -passwordResetToken -passwordResetExpires').populate('properties');
+    res.json(landlords);
+  } catch (err) {
+    console.error('Admin landlords error:', err.message);
+    res.status(500).json({ message: 'Error loading landlords' });
+  }
+});
+
+// ──────────────────────────────────────────────────
+// PROPERTY MANAGEMENT
+// ──────────────────────────────────────────────────
+
+router.get('/properties', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const { status } = req.query;
+
+    const filter = {};
+    if (status && status !== 'all') filter.status = status;
+
+    const [properties, total] = await Promise.all([
+      Property.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('landlord', 'fullName email'),
+      Property.countDocuments(filter),
+    ]);
+
+    res.json({ data: properties, page, total, totalPages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error('Admin properties error:', err.message);
+    res.status(500).json({ message: 'Error loading properties' });
+  }
+});
+
+router.patch('/properties/:id/status', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowed = ['pending', 'approved', 'rejected', 'active', 'inactive'];
+    if (!status || !allowed.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const property = await Property.findByIdAndUpdate(
+      req.params.id,
+      { $set: { status, isVerified: status === 'approved' || status === 'active' } },
+      { new: true }
+    ).populate('landlord', 'fullName email');
+
+    if (!property) return res.status(404).json({ message: 'Property not found' });
+    res.json(property);
+  } catch (err) {
+    console.error('Admin update property status error:', err.message);
+    res.status(500).json({ message: 'Error updating property status' });
+  }
+});
+
+// ──────────────────────────────────────────────────
+// RELOCATION REQUESTS
+// ──────────────────────────────────────────────────
+
+router.get('/relocations', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const [requests, total] = await Promise.all([
+      RelocationRequest.find().sort({ createdAt: -1 }).skip(skip).limit(limit)
+        .populate('client', 'fullName email')
+        .populate({ path: 'assignedDriver', populate: { path: 'user', select: 'fullName' } }),
+      RelocationRequest.countDocuments(),
+    ]);
+
+    res.json({ data: requests, page, total, totalPages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error('Admin relocations error:', err.message);
+    res.status(500).json({ message: 'Error loading relocation requests' });
+  }
+});
+
+// ──────────────────────────────────────────────────
+// ANALYTICS
+// ──────────────────────────────────────────────────
+
+router.get('/analytics', authenticate, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const [
+      totalUsers,
+      roleCounts,
+      totalOrders,
+      orderStatusCounts,
+      revenueAgg,
+      totalProperties,
+      totalRelocations,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.aggregate([{ $group: { _id: '$role', count: { $sum: 1 } } }]),
+      Order.countDocuments(),
+      Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Order.aggregate([{ $match: { status: 'delivered' } }, { $group: { _id: null, total: { $sum: '$priceKes' } } }]),
+      Property.countDocuments(),
+      RelocationRequest.countDocuments(),
+    ]);
+
+    const roleMap = {};
+    roleCounts.forEach((r) => { roleMap[r._id] = r.count; });
+
+    const statusMap = {};
+    orderStatusCounts.forEach((s) => { statusMap[s._id] = s.count; });
+
+    res.json({
+      totalUsers,
+      usersByRole: roleMap,
+      totalOrders,
+      ordersByStatus: statusMap,
+      totalRevenue: revenueAgg[0]?.total || 0,
+      totalProperties,
+      totalRelocations,
+    });
+  } catch (err) {
+    console.error('Admin analytics error:', err.message);
+    res.status(500).json({ message: 'Error loading analytics' });
   }
 });
 

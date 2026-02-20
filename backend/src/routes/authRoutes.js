@@ -6,7 +6,9 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Driver = require('../models/Driver');
 const Admin = require('../models/Admin');
+const Landlord = require('../models/Landlord');
 const { sendPasswordResetEmail } = require('../services/emailService');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -44,14 +46,23 @@ router.post('/signup', async (req, res) => {
       fullName,
       email,
       passwordHash,
-      role: role && ['client', 'driver', 'admin'].includes(role) ? role : 'client',
+      role: role && ['client', 'driver', 'admin', 'landlord'].includes(role) ? role : 'client',
     });
 
-    // If a driver or admin signs up themselves, create the related document with basic defaults
+    // If a driver, admin, or landlord signs up themselves, create the related document with basic defaults
     if (user.role === 'driver') {
       await Driver.create({ user: user._id });
     } else if (user.role === 'admin') {
       await Admin.create({ user: user._id, displayName: user.fullName });
+    } else if (user.role === 'landlord') {
+      await Landlord.create({
+        user: user._id,
+        properties: [],
+        verified: false,
+        rating: 5.0,
+        totalProperties: 0,
+        activeListings: 0
+      });
     }
 
     const token = signToken(user);
@@ -219,4 +230,40 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// Get current authenticated user's profile
+
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-passwordHash -passwordResetToken -passwordResetExpires');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    console.error('Get profile error:', err.message);
+    res.status(500).json({ message: 'Error fetching profile' });
+  }
+});
+
+// Update current user's profile (fullName, phone)
+router.patch('/me', authenticate, async (req, res) => {
+  try {
+    const { fullName, phone } = req.body;
+    const update = {};
+    if (fullName && typeof fullName === 'string') update.fullName = fullName.trim();
+    if (phone && typeof phone === 'string') update.phone = phone.trim();
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: update },
+      { new: true }
+    ).select('-passwordHash -passwordResetToken -passwordResetExpires');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    console.error('Update profile error:', err.message);
+    res.status(500).json({ message: 'Error updating profile' });
+  }
+});
+
 module.exports = router;
+
