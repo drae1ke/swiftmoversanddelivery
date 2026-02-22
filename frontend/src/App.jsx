@@ -10,15 +10,7 @@ import Home from "./pages/Home"
 import Client from "./pages/client/MainClient"
 import LandlordDashboard from "./pages/landlord/LandlordPage"
 
-/* 
-// Admin Dashboard (modular)
-import AdminLayout from "./pages/admin/AdminLayout"
-import OverviewPage from "./pages/admin/OverviewPage"
-import UsersPage from "./pages/admin/UsersPage"
-import DriversPage from "./pages/admin/DriversPage"
-import OrdersPage from "./pages/admin/OrdersPage"
-import PropertiesPage from "./pages/admin/PropertiesPage"
-import SettingsPage from "./pages/admin/SettingsPage" */
+import AdminDashboard from "./pages/admin/AdminLayout"
 
 function App() {
 
@@ -41,6 +33,12 @@ function App() {
           path="/LandlordDashboard" 
           element={
             <ProtectedRoute Component={LandlordDashboard} allowedRoles={['landlord']} />
+          } 
+        />
+        <Route 
+          path="/admin/*" 
+          element={
+            <ProtectedRoute Component={AdminDashboard} allowedRoles={['admin']} />
           } 
         />
         {/*
