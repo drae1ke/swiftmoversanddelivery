@@ -8,9 +8,9 @@ import ProtectedRoute from "./components/common/ProtectedRoute"
 
 import Home from "./pages/Home"
 import Client from "./pages/client/MainClient"
-import LandlordDashboard from "./pages/landlord/LandlordPage"
-
+import LandlordDashboard from "./pages/landlord/LandlordLayout"
 import AdminDashboard from "./pages/admin/AdminLayout"
+import DriverDashboard from "./pages/driver/driverLayout"
 
 function App() {
 
@@ -41,43 +41,12 @@ function App() {
             <ProtectedRoute Component={AdminDashboard} allowedRoles={['admin']} />
           } 
         />
-        {/*
-        {/* Driver Dashboard - Protected for drivers only }
         <Route 
           path="/DriverDashboard" 
           element={
             <ProtectedRoute Component={DriverDashboard} allowedRoles={['driver']} />
           } 
         />
-        
-        {/* Landlord Dashboard - Protected for landlords only }
-        <Route 
-          path="/LandlordDashboard" 
-          element={
-            <ProtectedRoute Component={LandlordDashboard} allowedRoles={['landlord']} />
-          } 
-        />
-        
-        <Route path="/PropertyList" element={<PropertyList />} />
-
-        {/* Admin Dashboard — nested routes - Protected for admins only }
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute Component={AdminLayout} allowedRoles={['admin']} />
-          }
-        >
-          <Route index element={<OverviewPage />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="drivers" element={<DriversPage />} />
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="properties" element={<PropertiesPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
-
-        {/* Redirect old route }
-        <Route path="/AdminDashboard" element={<Navigate to="/admin" replace />} />
-       */}
       </Routes>
     </BrowserRouter>
   )
