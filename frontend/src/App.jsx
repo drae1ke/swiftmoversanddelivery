@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/common/ProtectedRoute"
 
 import Home from "./pages/Home"
 import Client from "./pages/client/MainClient"
+import LandlordDashboard from "./pages/landlord/LandlordPage"
 
 /* 
 // Admin Dashboard (modular)
@@ -34,6 +35,12 @@ function App() {
           path="/Client" 
           element={
             <ProtectedRoute Component={Client} allowedRoles={['client']} />
+          } 
+        />
+        <Route 
+          path="/LandlordDashboard" 
+          element={
+            <ProtectedRoute Component={LandlordDashboard} allowedRoles={['landlord']} />
           } 
         />
         {/*
