@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import TrackingMap from '../../components/client/TrackingMap';
+import OrderTrackingMap from '../../components/client/OrderTrackingMap';
 import { trackingDB, ROUTES } from '../../data/trackingData';
 
 const Tracking = ({ isActive, onShowPage }) => {
@@ -93,6 +94,11 @@ const Tracking = ({ isActive, onShowPage }) => {
           <TrackingMap 
             routeData={ROUTES[trackingCode]} 
             isLive={trackingData.statusClass === 'transit'} 
+          />
+
+          <OrderTrackingMap
+            fromLabel={trackingData.pkg.find((p) => p.l === 'From')?.v}
+            toLabel={trackingData.pkg.find((p) => p.l === 'To')?.v}
           />
 
           {/* Two columns: timeline + info */}

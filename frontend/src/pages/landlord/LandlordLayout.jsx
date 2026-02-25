@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import '../../styles/LandlordDashboard.css';
 import { nid, getInitials, formatNumber, getPillClass, COUNTIES } from '../../utils/utils';
+import { useLocalToast } from '../../components/common/useLocalToast';
 
 // Components
 import Sidebar from '../../components/landlord/Sidebar';
@@ -76,7 +77,7 @@ export default function LandlordLayout() {
   const [props, setProps] = useState(SEED_PROPS);
   const [payments, setPayments] = useState(SEED_PAYMENTS);
   const [page, setPage] = useState('overview');
-  const [toasts, setToasts] = useState([]);
+  const { toasts, toast } = useLocalToast();
 
   // Profile
   const [profile, setProfile] = useState({ 
@@ -114,13 +115,6 @@ export default function LandlordLayout() {
     document.head.appendChild(el);
     return () => el.remove();
   }, []);
-
-  /* Toast helper */
-  const toast = (msg, type = 'success') => {
-    const id = nid();
-    setToasts(t => [...t, { id, msg, type }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
-  };
 
   /* Derived */
   const allUnits = props.flatMap(p => p.units.map(u => ({ ...u, propName: p.name, propId: p.id })));

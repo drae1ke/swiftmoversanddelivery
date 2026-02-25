@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import  '../../styles/DriverDashboard.css';
-import { nid } from '../../utils/utils';
+import { useLocalToast } from '../../components/common/useLocalToast';
 
 // Components
 import Sidebar from '../../components/driver/Sidebar';
@@ -41,7 +41,7 @@ export default function DriverLayout() {
   const [trips, setTrips] = useState(SEED_TRIPS);
   const [docs, setDocs] = useState(SEED_DOCS);
   const [page, setPage] = useState('overview');
-  const [toasts, setToasts] = useState([]);
+  const { toasts, toast } = useLocalToast();
   const [profile, setProfile] = useState({ 
     name: 'David Otieno', 
     email: 'd.otieno@vaultspace.co.ke', 
@@ -56,12 +56,6 @@ export default function DriverLayout() {
   const [tripSearch, setTripSearch] = useState('');
   const [panel, setPanel] = useState({ open: false, trip: null });
   const [logoutModal, setLogoutModal] = useState(false);
-
-  const toast = (msg, type = 'success') => {
-    const id = nid();
-    setToasts(t => [...t, { id, msg, type }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
-  };
 
   const completedTrips = trips.filter(t => t.status === 'completed');
   const totalEarnings = completedTrips.reduce((a, t) => a + t.amount, 0);
