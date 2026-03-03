@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Services = ({ isActive, onShowPage }) => {
+const Services = ({ isActive, onShowPage, userName }) => {
   const services = [
     {
       id: 'delivery',
@@ -35,7 +35,7 @@ const Services = ({ isActive, onShowPage }) => {
   return (
     <div className={`page ${isActive ? 'active' : ''}`} id="page-services">
       <div className="page-header">
-        <div className="page-tag">Welcome back, James</div>
+        <div className="page-tag">Welcome back, {userName || 'there'}</div>
         <h1 className="page-title">What would you like<br /><span>to do today?</span></h1>
         <p className="page-desc">Choose a service below. Each form is focused — no distractions, just what you need.</p>
       </div>

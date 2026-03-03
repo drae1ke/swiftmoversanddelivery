@@ -1,27 +1,85 @@
 import React, { useState } from 'react';
 import TrackingMap from '../../components/client/TrackingMap';
 import OrderTrackingMap from '../../components/client/OrderTrackingMap';
-import { trackingDB, ROUTES } from '../../data/trackingData';
+import { trackOrder, getMyOrders } from '../../api';
 
 const Tracking = ({ isActive, onShowPage }) => {
   const [trackingCode, setTrackingCode] = useState('');
   const [trackingData, setTrackingData] = useState(null);
   const [showResult, setShowResult] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [myOrders, setMyOrders] = useState([]);
 
-  const handleTrack = () => {
+  // Fetch user's orders on component mount
+  React.useEffect(() => {
+    if (isActive) {
+      fetchMyOrders();
+    }
+  }, [isActive]);
+
+  const fetchMyOrders = async () => {
+    try {
+      const data = await getMyOrders();
+      setMyOrders(data.orders || []);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+    }
+  };
+
+  const handleTrack = async () => {
     if (!trackingCode.trim()) return;
-    renderTracking(trackingCode.trim().toUpperCase());
+    await renderTracking(trackingCode.trim().toUpperCase());
   };
 
-  const handleQuickTrack = (code) => {
+  const handleQuickTrack = async (code) => {
     setTrackingCode(code);
-    renderTracking(code);
+    await renderTracking(code);
   };
 
-  const renderTracking = (code) => {
-    const data = trackingDB[code];
-    setTrackingData(data);
-    setShowResult(!!data);
+  const renderTracking = async (code) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const data = await trackOrder(code);
+      
+      // Transform the order data to match the expected format
+      const transformedData = {
+        type: data.serviceType || 'delivery',
+        status: data.status,
+        statusClass: data.status === 'delivered' ? 'delivered' : data.status === 'in_transit' ? 'transit' : 'pending',
+        icon: data.status === 'delivered' ? '✅' : data.status === 'in_transit' ? '🚛' : '📦',
+        eta: data.estimatedDelivery || 'Pending',
+        etaLabel: 'Estimated Arrival',
+        pkg: [
+          { l: 'Service', v: data.serviceType || 'Delivery' },
+          { l: 'Package', v: data.description || 'Item' },
+          { l: 'From', v: data.pickupLocation || 'N/A' },
+          { l: 'To', v: data.deliveryLocation || 'N/A' },
+          { l: 'Weight', v: data.weight ? `${data.weight}kg` : 'N/A' },
+          { l: 'Amount', v: `KES ${data.amount || 0}` },
+        ],
+        driver: data.driver ? {
+          initials: data.driver.fullName?.substring(0, 2).toUpperCase() || 'DR',
+          name: data.driver.fullName || 'Driver',
+          phone: data.driver.phone || '',
+          rating: `⭐ ${data.driver.rating || 4.5}`,
+        } : null,
+        timeline: data.timeline || [
+          { state: 'done', title: 'Order Confirmed', desc: 'Your order has been confirmed.', time: 'Just now' }
+        ]
+      };
+      
+      setTrackingData(transformedData);
+      setShowResult(true);
+    } catch (err) {
+      setError(err.message || 'Order not found');
+      setTrackingData(null);
+      setShowResult(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -51,13 +109,23 @@ const Tracking = ({ isActive, onShowPage }) => {
             onChange={(e) => setTrackingCode(e.target.value.toUpperCase())}
             onKeyPress={handleKeyPress}
           />
-          <button className="track-btn" onClick={handleTrack}>Track →</button>
+          <button className="track-btn" onClick={handleTrack} disabled={loading}>
+            {loading ? 'Tracking...' : 'Track →'}
+          </button>
         </div>
+        {error && <div style={{ color: 'red', marginTop: '0.5rem' }}>{error}</div>}
         <div className="track-hint">
-          Try a demo: 
-          <a onClick={() => handleQuickTrack('SD-2025-48271')}> SD-2025-48271</a> · 
-          <a onClick={() => handleQuickTrack('CG-2025-33901')}> CG-2025-33901</a> · 
-          <a onClick={() => handleQuickTrack('SD-2025-39104')}> SD-2025-39104</a>
+          Quick track from your orders: 
+          {myOrders.length > 0 ? (
+            myOrders.slice(0, 3).map((order, idx) => (
+              <span key={order._id}>
+                <a onClick={() => handleQuickTrack(order._id)}> {order._id}</a>
+                {idx < Math.min(2, myOrders.length - 1) && ' · '}
+              </span>
+            ))
+          ) : (
+            <span> No orders yet</span>
+          )}
         </div>
       </div>
 
@@ -90,11 +158,11 @@ const Tracking = ({ isActive, onShowPage }) => {
             </div>
           </div>
 
-          {/* Map */}
-          <TrackingMap 
+          {/* Map - Only render if we have route data */}
+          {/* <TrackingMap 
             routeData={ROUTES[trackingCode]} 
             isLive={trackingData.statusClass === 'transit'} 
-          />
+          /> */}
 
           <OrderTrackingMap
             fromLabel={trackingData.pkg.find((p) => p.l === 'From')?.v}
@@ -107,21 +175,29 @@ const Tracking = ({ isActive, onShowPage }) => {
             <div className="timeline-card">
               <div className="timeline-card-title">Shipment Timeline</div>
               <div className="timeline">
-                {trackingData.timeline.map((step, i) => (
-                  <div key={i} className={`tl-item ${step.state}`}>
-                    <div className="tl-dot-wrap">
-                      <div className="tl-dot">
-                        {step.state === 'done' ? '✓' : step.state === 'current' ? '→' : i + 1}
+                {trackingData.timeline && trackingData.timeline.length > 0 ? (
+                  trackingData.timeline.map((step, i) => (
+                    <div key={i} className={`tl-item ${step.state}`}>
+                      <div className="tl-dot-wrap">
+                        <div className="tl-dot">
+                          {step.state === 'done' ? '✓' : step.state === 'current' ? '→' : i + 1}
+                        </div>
+                        {i < trackingData.timeline.length - 1 && <div className="tl-line"></div>}
                       </div>
-                      {i < trackingData.timeline.length - 1 && <div className="tl-line"></div>}
+                      <div className="tl-body">
+                        <div className="tl-title">{step.title}</div>
+                        <div className="tl-desc">{step.desc}</div>
+                        <div className="tl-time">{step.time}</div>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="tl-item">
                     <div className="tl-body">
-                      <div className="tl-title">{step.title}</div>
-                      <div className="tl-desc">{step.desc}</div>
-                      <div className="tl-time">{step.time}</div>
+                      <div className="tl-desc">No timeline information available</div>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -147,15 +223,28 @@ const Tracking = ({ isActive, onShowPage }) => {
                     <div>
                       <div className="driver-name">{trackingData.driver.name}</div>
                       <div className="driver-rating">{trackingData.driver.rating}</div>
+                      {trackingData.driver.phone && (
+                        <div className="driver-phone" style={{ fontSize: '0.85rem', color: '#555', marginTop: 2 }}>
+                          📱 {trackingData.driver.phone}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="driver-actions">
-                    <button className="driver-btn" onClick={() => alert('📞 Calling driver…')}>
-                      📞 Call
-                    </button>
-                    <button className="driver-btn primary" onClick={() => alert('💬 Opening chat…')}>
-                      💬 Message
-                    </button>
+                    {trackingData.driver.phone ? (
+                      <a href={`tel:${trackingData.driver.phone}`} className="driver-btn" style={{ textDecoration: 'none' }}>
+                        📞 Call
+                      </a>
+                    ) : (
+                      <button className="driver-btn" disabled>📞 Call</button>
+                    )}
+                    {trackingData.driver.phone ? (
+                      <a href={`sms:${trackingData.driver.phone}`} className="driver-btn primary" style={{ textDecoration: 'none' }}>
+                        💬 Message
+                      </a>
+                    ) : (
+                      <button className="driver-btn primary" disabled>💬 Message</button>
+                    )}
                   </div>
                 </div>
               )}

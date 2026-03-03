@@ -18,7 +18,7 @@
 .features-title {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #dd3333;
+  color: #DC2626;
   margin-bottom: 1rem;
 }
 
@@ -30,7 +30,7 @@
 
 .features-subtitle {
   font-size: 1.125rem;
-  color: #666666;
+  color: #64748B;
   max-width: 42rem;
   margin: 0 auto;
   line-height: 1.6;
@@ -56,13 +56,15 @@
 
 .feature-card {
   background-color: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 0.5rem;
-  transition: box-shadow 0.3s ease;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
 }
 
 .feature-card:hover {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 4px 8px rgba(15, 23, 42, 0.04);
+  border-color: rgba(220, 38, 38, 0.15);
+  transform: translateY(-2px);
 }
 
 .feature-card-content {
@@ -72,8 +74,8 @@
 .feature-icon-wrapper {
   width: 3rem;
   height: 3rem;
-  border-radius: 0.5rem;
-  background-color: rgba(221, 51, 51, 0.1);
+  border-radius: 0.625rem;
+  background-color: rgba(220, 38, 38, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -82,18 +84,18 @@
 
 .feature-icon {
   font-size: 1.5rem;
-  color: #dd3333;
+  color: #DC2626;
 }
 
 .feature-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #0F172A;
   margin-bottom: 0.5rem;
 }
 
 .feature-description {
   font-size: 0.875rem;
-  color: #666666;
-  line-height: 1.6;
+  color: #64748B;
+  line-height: 1.7;
 }

@@ -55,10 +55,34 @@ const orderSchema = new mongoose.Schema(
     deliveredAt: {
       type: Date,
     },
+    rating: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Rating',
+    },
+    driverLocation: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude] - Updated in real-time during delivery
+        default: [0, 0],
+      },
+    },
+    lastLocationUpdate: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Indexes for efficient queries
+orderSchema.index({ client: 1, createdAt: -1 });
+orderSchema.index({ driver: 1, status: 1 });
+orderSchema.index({ status: 1 });
+orderSchema.index({ driverLocation: '2dsphere' });
 
 module.exports = mongoose.model('Order', orderSchema);

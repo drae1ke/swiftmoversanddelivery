@@ -50,7 +50,7 @@ const Sidebar = ({ currentPage, onShowPage, onLogout, sidebarOpen }) => {
               className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
               onClick={() => onShowPage(item.id)}
             >
-              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-icon">{item.icon && <item.icon />}</span>
               {item.label}
               {item.badge && <span className="nav-badge">{item.badge}</span>}
             </div>

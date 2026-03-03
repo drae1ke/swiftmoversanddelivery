@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import FormProgress from '../../components/client/FormProgress';
 import RadioCard from '../../components/client/RadioCard';
 import SuccessCard from '../../components/client/SucccessCard';
+import { createRelocationRequest } from '../../api';
 
 const Relocation = ({ isActive, onShowPage }) => {
   const [step, setStep] = useState(1);
@@ -15,24 +16,79 @@ const Relocation = ({ isActive, onShowPage }) => {
     packing: true,
     furnitureAssembly: false,
     applianceDisconnect: false,
-    temporaryStorage: false
+    temporaryStorage: false,
+    itemsDescription: '',
+    scheduledDate: ''
   });
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [successData, setSuccessData] = useState(null);
 
-  const handleNextStep = (nextStep) => {
-    setStep(nextStep);
+  const handleFinalSubmit = async () => {
+    try {
+      setSubmitting(true);
+      setError(null);
+      const addons = [];
+      if (formData.packing) addons.push('Professional packing');
+      if (formData.furnitureAssembly) addons.push('Furniture disassembly/reassembly');
+      if (formData.applianceDisconnect) addons.push('Appliance disconnection/reconnection');
+      if (formData.temporaryStorage) addons.push('Temporary storage');
+
+      const result = await createRelocationRequest({
+        pickupAddress: `${formData.currentAddress}, ${formData.currentCounty}`,
+        destinationAddress: `${formData.destAddress}, ${formData.destCounty}`,
+        scheduledDate: formData.scheduledDate
+          ? new Date(formData.scheduledDate).toISOString()
+          : new Date(Date.now() + 7 * 86400000).toISOString(),
+        itemsDescription: formData.itemsDescription || `${formData.moveType} move — ${formData.homeSize}`,
+        estimatedVolume: formData.homeSize,
+        vehicleType: 'lorry',
+        serviceType: 'Standard',
+        notes: addons.length ? `Add-ons: ${addons.join(', ')}` : '',
+      });
+      setSuccessData(result);
+    } catch (err) {
+      setError(err.message || 'Failed to submit relocation request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleNext = async () => {
+    setError(null);
+    if (step === 1) {
+      if (!formData.currentAddress || !formData.destAddress) {
+        setError('Please fill in both current and destination addresses.');
+        return;
+      }
+      setStep(2);
+      return;
+    }
+    if (step === 2) {
+      if (!formData.itemsDescription) {
+        setError('Please describe the items to be moved.');
+        return;
+      }
+      setStep(3);
+      return;
+    }
+    if (step === 3) {
+      await handleFinalSubmit();
+    }
   };
 
   const handleBack = () => {
-    onShowPage('services');
+    if (step > 1) {
+      setStep(step - 1);
+    } else {
+      onShowPage('services');
+    }
   };
 
-  const handleRequestQuote = () => {
-    setShowSuccess(true);
-  };
+  // navigation/back logic is above; no duplicate here
 
   const handleBackToServices = () => {
-    setShowSuccess(false);
+    setSuccessData(null);
     setStep(1);
     onShowPage('services');
   };
@@ -58,10 +114,15 @@ const Relocation = ({ isActive, onShowPage }) => {
       </div>
 
       <div className="form-shell">
-        {!showSuccess && <FormProgress steps={steps} currentStep={step} />}
+        {/* hide progress bar once we have a success response */}
+        {!successData && <FormProgress steps={steps} currentStep={step} />}
+
+        {error && (
+          <div style={{ color: '#e53e3e', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>
+        )}
 
         {/* Step 1: Move Details */}
-        {step === 1 && !showSuccess && (
+        {step === 1 && !successData && (
           <div className="form-card">
             <div className="form-card-title">Move Details</div>
             <div className="field-group">
@@ -213,18 +274,66 @@ const Relocation = ({ isActive, onShowPage }) => {
             </div>
             <div className="form-actions">
               <button className="btn btn-outline" onClick={handleBack}>← Back</button>
-              <button className="btn btn-primary" onClick={handleRequestQuote}>Request Quote →</button>
+              <button className="btn btn-primary" onClick={handleNext} disabled={submitting}>
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Inventory Details */}
+        {step === 2 && !successData && (
+          <div className="form-card">
+            <div className="form-card-title">Inventory Details</div>
+            <div className="field-group">
+              <div className="field">
+                <label>Brief description of items</label>
+                <textarea
+                  placeholder="e.g. 3 sofas, 2 beds, boxes of kitchenware…"
+                  value={formData.itemsDescription}
+                  onChange={(e) => setFormData({...formData, itemsDescription: e.target.value})}
+                ></textarea>
+              </div>
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-outline" onClick={handleBack}>← Back</button>
+              <button className="btn btn-primary" onClick={handleNext} disabled={submitting}>
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Schedule */}
+        {step === 3 && !successData && (
+          <div className="form-card">
+            <div className="form-card-title">Schedule Move</div>
+            <div className="field-group">
+              <div className="field">
+                <label>Preferred date</label>
+                <input
+                  type="date"
+                  value={formData.scheduledDate ? formData.scheduledDate.substring(0,10) : ''}
+                  onChange={(e) => setFormData({...formData, scheduledDate: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-outline" onClick={handleBack}>← Back</button>
+              <button className="btn btn-primary" onClick={handleNext} disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Submit Request →'}
+              </button>
             </div>
           </div>
         )}
 
         {/* Success */}
-        {showSuccess && (
+        {successData && (
           <SuccessCard
             icon="🏠"
             title="Relocation Request Sent!"
-            message="Our team will call you within 2 hours to confirm your moving date, finalize inventory, and share a fixed price quote."
-            trackingCode="RL-2025-09342"
+            message={`Your ${formData.moveType.toLowerCase()} relocation from ${formData.currentCounty} to ${formData.destCounty} has been submitted. Estimated cost: KES ${successData.price?.toLocaleString() || '—'}. Our team will confirm details shortly.`}
+            trackingCode={successData._id}
             onBack={handleBackToServices}
           />
         )}

@@ -2,8 +2,8 @@
   padding-top: 3rem;
   padding-bottom: 3rem;
   background-color: #ffffff;
-  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
+  border-top: 1px solid #E2E8F0;
+  border-bottom: 1px solid #E2E8F0;
 }
 
 .stats-container {
@@ -25,13 +25,13 @@
 .stat-value {
   font-size: 2rem;
   font-weight: bold;
-  color: #dd3333;
+  color: #DC2626;
   margin: 0;
 }
 
 .stat-label {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #64748B;
   margin-top: 0.25rem;
   margin-bottom: 0;
 }

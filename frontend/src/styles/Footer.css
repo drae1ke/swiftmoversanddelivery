@@ -1,6 +1,6 @@
 /* Footer Styles */
 .footer {
-  background-color: #333333;
+  background-color: #18181B;
   color: #ffffff;
 }
 
@@ -41,12 +41,12 @@
 .footer-logo {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #dd3333;
+  color: #DC2626;
   margin-bottom: 1rem;
 }
 
 .footer-description {
-  color: #cccccc;
+  color: #CBD5E1;
   line-height: 1.6;
   margin-bottom: 1.5rem;
   font-size: 0.9375rem;
@@ -62,19 +62,21 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
-  background-color: #3388dd;
+  background-color: rgba(255,255,255,0.1);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
   transition: all 0.3s ease;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .social-link:hover {
-  background-color: #dd3333;
+  background-color: #DC2626;
+  border-color: #DC2626;
   transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(221, 51, 51, 0.3);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
 }
 
 .social-link i {
@@ -85,7 +87,7 @@
 .footer-heading {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #dd3333;
+  color: #DC2626;
   margin-bottom: 1.25rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -102,7 +104,7 @@
 }
 
 .footer-links a {
-  color: #cccccc;
+  color: #CBD5E1;
   text-decoration: none;
   font-size: 0.9375rem;
   transition: all 0.3s ease;
@@ -110,7 +112,7 @@
 }
 
 .footer-links a:hover {
-  color: #3388dd;
+  color: #2563EB;
   padding-left: 0.5rem;
 }
 
@@ -128,12 +130,12 @@
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  color: #cccccc;
+  color: #CBD5E1;
   font-size: 0.9375rem;
 }
 
 .footer-contact i {
-  color: #3388dd;
+  color: #2563EB;
   font-size: 1rem;
   margin-top: 0.125rem;
   min-width: 1rem;
@@ -145,9 +147,9 @@
 
 /* Footer Bottom */
 .footer-bottom {
-  background-color: #1a1a1a;
+  background-color: #020617;
   padding: 1.5rem 0;
-  border-top: 1px solid #444444;
+  border-top: 1px solid #1E293B;
 }
 
 .footer-bottom-content {
@@ -167,7 +169,7 @@
 }
 
 .footer-copyright {
-  color: #999999;
+  color: #94A3B8;
   font-size: 0.875rem;
   margin: 0;
 }
@@ -186,12 +188,12 @@
 }
 
 .footer-bottom-links a {
-  color: #999999;
+  color: #94A3B8;
   text-decoration: none;
   font-size: 0.875rem;
   transition: color 0.3s ease;
 }
 
 .footer-bottom-links a:hover {
-  color: #dd3333;
+  color: #DC2626;
 }

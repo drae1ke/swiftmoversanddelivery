@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import StorageCard from '../../components/client/StorageCard';
-import { storageUnits } from '../../data/StorageData';
+import { listProperties } from '../../api';
 
 const Storage = ({ isActive, onShowPage }) => {
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [priceRange, setPriceRange] = useState(20000);
   const [filters, setFilters] = useState({
     nairobi: true,
@@ -20,17 +23,41 @@ const Storage = ({ isActive, onShowPage }) => {
     driveUp: false
   });
 
+  // Fetch properties on mount
+  useEffect(() => {
+    if (isActive) {
+      fetchProperties();
+    }
+  }, [isActive]);
+
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await listProperties({
+        available: 'true',
+        maxPrice: priceRange
+      });
+      setProperties(data.properties || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load properties');
+      console.error('Error fetching properties:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFilterChange = (filter) => {
     setFilters({ ...filters, [filter]: !filters[filter] });
   };
 
   const handleApplyFilters = () => {
-    // In a real app, this would filter the results
-    console.log('Applying filters:', filters, priceRange);
+    fetchProperties();
   };
 
   const handleBookStorage = (unit) => {
-    // Navigate to booking page with selected unit
+    // Store selected property in sessionStorage for the booking page
+    sessionStorage.setItem('selectedProperty', JSON.stringify(unit));
     onShowPage('storage-book');
   };
 
@@ -194,27 +221,51 @@ const Storage = ({ isActive, onShowPage }) => {
 
         {/* Results */}
         <div className="storage-results">
-          <div className="storage-toolbar">
-            <div className="results-count">
-              <strong>{storageUnits.length} spaces</strong> available near you
-            </div>
-            <select className="sort-select">
-              <option>Sort: Price — Low to High</option>
-              <option>Sort: Price — High to Low</option>
-              <option>Sort: Size — Smallest First</option>
-              <option>Sort: Nearest First</option>
-            </select>
-          </div>
+          {loading && <div className="loading-message">Loading properties...</div>}
+          {error && <div className="error-message">Error: {error}</div>}
+          
+          {!loading && !error && (
+            <>
+              <div className="storage-toolbar">
+                <div className="results-count">
+                  <strong>{properties.length} spaces</strong> available near you
+                </div>
+                <select className="sort-select">
+                  <option>Sort: Price — Low to High</option>
+                  <option>Sort: Price — High to Low</option>
+                  <option>Sort: Size — Smallest First</option>
+                  <option>Sort: Nearest First</option>
+                </select>
+              </div>
 
-          <div className="storage-grid">
-            {storageUnits.map(unit => (
-              <StorageCard 
-                key={unit.id}
-                unit={unit}
-                onBook={handleBookStorage}
-              />
-            ))}
-          </div>
+              <div className="storage-grid">
+                {properties.map(property => (
+                  <StorageCard 
+                    key={property._id}
+                    unit={{
+                      id: property._id,
+                      name: property.name,
+                      location: property.location,
+                      icon: '📦',
+                      status: property.availability === 'available' ? 'available' : 'limited',
+                      badgeText: property.availability === 'available' ? 'Available' : 'Limited',
+                      tags: [
+                        `${property.sizeSqFt} m²`,
+                        ...(property.hasParking ? ['Parking'] : []),
+                        ...(property.hasSecurityCameras ? ['CCTV'] : []),
+                        ...(property.has24HourAccess ? ['24/7 Access'] : []),
+                      ],
+                      price: `KES ${property.pricePerMonth?.toLocaleString()}`
+                    }}
+                    onBook={handleBookStorage}
+                  />
+                ))}
+                {properties.length === 0 && (
+                  <div className="no-results">No properties available matching your filters</div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

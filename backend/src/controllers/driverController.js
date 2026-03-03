@@ -223,7 +223,7 @@ async function getNearbyOrders(req, res) {
     const orders = await Order.find({
       status: 'pending',
       driver: null,
-    }).populate('client', 'fullName email');
+    }).populate('client', 'fullName email phone');
 
     const ordersWithDistance = orders.map((order) => ({
       ...order.toObject(),
@@ -265,7 +265,7 @@ async function getNearbyRelocations(req, res) {
     const requests = await RelocationRequest.find({
       status: 'pending',
       assignedDriver: null,
-    }).populate('client', 'fullName email');
+    }).populate('client', 'fullName email phone');
 
     const requestsWithDistance = requests.map((request) => ({
       ...request.toObject(),
@@ -301,6 +301,7 @@ async function updateOrderStatus(req, res) {
 
     const order = await Order.findOne({ _id: req.params.id, driver: driver._id }).populate(
       'client',
+      'fullName email phone',
     );
     if (!order) {
       return res.status(404).json({ message: 'Order not found for this driver' });
@@ -329,6 +330,117 @@ async function updateOrderStatus(req, res) {
   }
 }
 
+// Driver accepts a pending order
+async function acceptOrder(req, res) {
+  try {
+    const driver = await Driver.findOne({ user: req.user.id });
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.status !== 'pending' || order.driver) {
+      return res.status(400).json({ message: 'Order is no longer available' });
+    }
+
+    order.driver = driver._id;
+    order.status = 'assigned';
+    await order.save();
+
+    // Increment driver's totalTrips
+    driver.totalTrips += 1;
+    await driver.save();
+
+    const populated = await Order.findById(order._id)
+      .populate('client', 'fullName email phone')
+      .populate({ path: 'driver', populate: { path: 'user', select: 'fullName email phone' } });
+
+    res.json(populated);
+  } catch (err) {
+    console.error('Accept order error:', err.message);
+    res.status(500).json({ message: 'Error accepting order' });
+  }
+}
+
+// Driver accepts a pending relocation request
+async function acceptRelocation(req, res) {
+  try {
+    const driver = await Driver.findOne({ user: req.user.id });
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    const relocation = await RelocationRequest.findById(req.params.id);
+    if (!relocation) {
+      return res.status(404).json({ message: 'Relocation request not found' });
+    }
+
+    if (relocation.status !== 'pending' || relocation.assignedDriver) {
+      return res.status(400).json({ message: 'Relocation request is no longer available' });
+    }
+
+    relocation.assignedDriver = driver._id;
+    relocation.status = 'assigned';
+    await relocation.save();
+
+    driver.totalTrips += 1;
+    await driver.save();
+
+    const populated = await RelocationRequest.findById(relocation._id)
+      .populate('client', 'fullName email phone')
+      .populate({ path: 'assignedDriver', populate: { path: 'user', select: 'fullName email phone' } });
+
+    res.json(populated);
+  } catch (err) {
+    console.error('Accept relocation error:', err.message);
+    res.status(500).json({ message: 'Error accepting relocation request' });
+  }
+}
+
+// Get driver's assigned orders (active work)
+async function getMyOrders(req, res) {
+  try {
+    const driver = await Driver.findOne({ user: req.user.id });
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    const orders = await Order.find({ driver: driver._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('client', 'fullName email phone');
+
+    res.json(orders);
+  } catch (err) {
+    console.error('Get driver orders error:', err.message);
+    res.status(500).json({ message: 'Error fetching driver orders' });
+  }
+}
+
+// Get driver's assigned relocations
+async function getMyRelocations(req, res) {
+  try {
+    const driver = await Driver.findOne({ user: req.user.id });
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver profile not found' });
+    }
+
+    const relocations = await RelocationRequest.find({ assignedDriver: driver._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('client', 'fullName email phone');
+
+    res.json(relocations);
+  } catch (err) {
+    console.error('Get driver relocations error:', err.message);
+    res.status(500).json({ message: 'Error fetching driver relocations' });
+  }
+}
+
 module.exports = {
   getDashboard,
   updateProfile,
@@ -337,5 +449,9 @@ module.exports = {
   getNearbyOrders,
   getNearbyRelocations,
   updateOrderStatus,
+  acceptOrder,
+  acceptRelocation,
+  getMyOrders,
+  getMyRelocations,
 };
 

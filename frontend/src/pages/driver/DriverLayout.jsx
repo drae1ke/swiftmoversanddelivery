@@ -1,6 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import  '../../styles/DriverDashboard.css';
 import { useLocalToast } from '../../components/common/useLocalToast';
+import { 
+  getDriverDashboard, 
+  getDriverProfile, 
+  updateDriverProfile, 
+  getNearbyOrders,
+  getNearbyRelocations,
+  acceptOrderDriver,
+  acceptRelocationDriver,
+  updateOrderStatusDriver,
+  setDriverOnlineStatus,
+  updateDriverLocation,
+  getDriverMyOrders,
+} from '../../api';
 
 // Components
 import Sidebar from '../../components/driver/Sidebar';
@@ -15,47 +28,127 @@ import TripPanel from '../../components/driver/TripPanel';
 import LogoutModal from '../../components/driver/LogoutModal';
 import Toast from '../../components/driver/Toast';
 
-/* ─── Seed Data ─── */
-const SEED_TRIPS = [
-  { id: 't1', tripId: 'TRP-001', status: 'active', from: 'Wilson Airport, Nairobi', to: 'Mombasa Road Warehouse', cargo: 'Electronics - 3 pallets', weight: '480 kg', amount: 12500, date: '2026-02-22', time: '08:30', duration: '2h 15m', customer: 'Safiri Logistics', notes: '' },
-  { id: 't2', tripId: 'TRP-002', status: 'pending', from: 'Kilimani Storage Centre', to: 'Westlands Industrial', cargo: 'Furniture - 2 units', weight: '210 kg', amount: 6800, date: '2026-02-22', time: '13:00', duration: '45m', customer: 'James Kariuki', notes: 'Handle with care' },
-  { id: 't3', tripId: 'TRP-003', status: 'completed', from: 'Industrial Area', to: 'Roysambu Depot', cargo: 'Auto parts - bulk', weight: '920 kg', amount: 18400, date: '2026-02-21', time: '09:00', duration: '1h 50m', customer: 'BuildMart Ltd', notes: '' },
-  { id: 't4', tripId: 'TRP-004', status: 'completed', from: 'Westlands', to: 'Karen, Nairobi', cargo: 'Office supplies', weight: '120 kg', amount: 4200, date: '2026-02-20', time: '14:30', duration: '55m', customer: 'Grace Njeri', notes: '' },
-  { id: 't5', tripId: 'TRP-005', status: 'cancelled', from: 'CBD Pickup Point', to: 'Gigiri', cargo: 'Perishables', weight: '80 kg', amount: 3100, date: '2026-02-19', time: '07:00', duration: '—', customer: 'Peter Mwenda', notes: 'Client cancelled' },
-];
-
-const SEED_DOCS = [
-  { id: 'd1', name: 'Driving Licence', icon: '🪪', status: 'valid', expiry: '2028-03-15', issuer: 'NTSA Kenya' },
-  { id: 'd2', name: 'Vehicle Inspection', icon: '🚛', status: 'valid', expiry: '2026-09-01', issuer: 'KEBS' },
-  { id: 'd3', name: 'Goods in Transit Insurance', icon: '📋', status: 'expiring', expiry: '2026-04-10', issuer: 'Jubilee Insurance' },
-  { id: 'd4', name: 'PSV Badge', icon: '🏷️', status: 'valid', expiry: '2027-01-20', issuer: 'NTSA Kenya' },
-];
-
-const SCHEDULE = [
-  { time: '08:30', ampm: 'AM', title: 'TRP-001 · Pick-up', detail: 'Wilson Airport → Mombasa Road Warehouse', filled: true, pill: { cls: 'dp-pill-active', label: 'Active' } },
-  { time: '01:00', ampm: 'PM', title: 'TRP-002 · Standby', detail: 'Kilimani Storage Centre → Westlands Industrial', filled: false, pill: { cls: 'dp-pill-pending', label: 'Pending' } },
-  { time: '04:00', ampm: 'PM', title: 'Vehicle Check-in', detail: 'Return to base depot — Ruaraka', filled: false, pill: null },
-];
-
 export default function DriverLayout() {
-  const [trips, setTrips] = useState(SEED_TRIPS);
-  const [docs, setDocs] = useState(SEED_DOCS);
+  const [trips, setTrips] = useState([]);
+  const [docs, setDocs] = useState([]);
   const [page, setPage] = useState('overview');
   const { toasts, toast } = useLocalToast();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [profile, setProfile] = useState({ 
-    name: 'David Otieno', 
-    email: 'd.otieno@vaultspace.co.ke', 
-    phone: '+254 711 234 567', 
-    licence: 'DL-KE-2028-09284', 
-    vehicle: 'KBZ 456T — Isuzu NQR', 
-    county: 'Nairobi' 
+    name: '', 
+    email: '', 
+    phone: '', 
+    licence: '', 
+    vehicle: '', 
+    county: '' 
   });
+  
   const [editProf, setEditProf] = useState(false);
   const [editForm, setEditForm] = useState({ ...profile });
   const [tripFilter, setTripFilter] = useState('all');
   const [tripSearch, setTripSearch] = useState('');
   const [panel, setPanel] = useState({ open: false, trip: null });
   const [logoutModal, setLogoutModal] = useState(false);
+
+  // Load driver data on mount
+  useEffect(() => {
+    fetchDriverData();
+  }, []);
+
+  const transformOrder = (order, type = 'delivery') => ({
+    id: order._id,
+    tripId: order._id?.slice(-8)?.toUpperCase() || order._id,
+    type,
+    status: order.status === 'assigned' ? 'active' : order.status === 'in-transit' ? 'active' : order.status === 'delivered' || order.status === 'completed' ? 'completed' : order.status || 'pending',
+    rawStatus: order.status,
+    from: order.pickupAddress || order.pickupAddress || '',
+    to: order.dropoffAddress || order.destinationAddress || '',
+    cargo: order.itemsDescription || `${order.packageWeightKg || ''}kg package`,
+    weight: order.packageWeightKg ? `${order.packageWeightKg} kg` : order.estimatedVolume || 'N/A',
+    amount: order.priceKes || order.price || 0,
+    date: new Date(order.createdAt).toLocaleDateString(),
+    time: new Date(order.createdAt).toLocaleTimeString(),
+    duration: '—',
+    customer: order.client?.fullName || 'Customer',
+    customerPhone: order.client?.phone || '',
+    customerEmail: order.client?.email || '',
+    vehicleType: order.vehicleType || '',
+    serviceType: order.serviceType || 'Standard',
+    notes: order.notes || '',
+    _raw: order,
+  });
+
+  const fetchDriverData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch driver dashboard data
+      const dashboardData = await getDriverDashboard();
+      
+      // Get assigned orders from dashboard
+      const assignedTrips = (dashboardData.pendingOrders || []).map(o => transformOrder(o, 'delivery'));
+      const completedTripsData = (dashboardData.completedOrders || []).map(o => transformOrder(o, 'delivery'));
+      
+      // Also try to fetch nearby available orders
+      let nearbyTrips = [];
+      try {
+        const nearby = await getNearbyOrders();
+        nearbyTrips = (nearby.orders || []).map(o => transformOrder(o, 'delivery'));
+      } catch (e) {
+        // Driver might not be online, that's fine
+      }
+
+      // Fetch nearby relocations too
+      let nearbyRelocs = [];
+      try {
+        const nearbyR = await getNearbyRelocations();
+        nearbyRelocs = (nearbyR.requests || []).map(r => transformOrder(r, 'relocation'));
+      } catch (e) {
+        // ignore
+      }
+
+      // Combine all trips, dedup by id
+      const allTrips = [...assignedTrips, ...completedTripsData, ...nearbyTrips, ...nearbyRelocs];
+      const seen = new Set();
+      const deduped = allTrips.filter(t => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+      
+      setTrips(deduped);
+      
+      // Fetch driver profile
+      const profileData = await getDriverProfile();
+      setProfile({
+        name: profileData.fullName || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        licence: profileData.licenseNumber || '',
+        vehicle: dashboardData.driver?.vehicleType || '',
+        county: profileData.address?.county || ''
+      });
+      setEditForm({
+        name: profileData.fullName || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        licence: profileData.licenseNumber || '',
+        vehicle: dashboardData.driver?.vehicleType || '',
+        county: profileData.address?.county || ''
+      });
+      
+      // No mock documents
+      setDocs([]);
+    } catch (err) {
+      setError(err.message || 'Failed to load driver data');
+      console.error('Driver dashboard error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const completedTrips = trips.filter(t => t.status === 'completed');
   const totalEarnings = completedTrips.reduce((a, t) => a + t.amount, 0);
@@ -70,6 +163,11 @@ export default function DriverLayout() {
     return matchFilter && matchSearch;
   });
 
+  const SCHEDULE = [
+    ...(activeTrip ? [{ time: new Date(activeTrip.date).toLocaleTimeString(), ampm: '', title: `${activeTrip.tripId} · Active`, detail: `${activeTrip.from} → ${activeTrip.to}`, filled: true, pill: { cls: 'dp-pill-active', label: 'Active' } }] : []),
+    ...trips.filter(t => t.status === 'pending').slice(0, 1).map(t => ({ time: new Date(t.date).toLocaleTimeString(), ampm: '', title: `${t.tripId} · Pending`, detail: `${t.from} → ${t.to}`, filled: false, pill: { cls: 'dp-pill-pending', label: 'Pending' } })),
+  ];
+
   const pageLabels = { 
     overview: 'Overview', 
     trips: 'My Trips', 
@@ -79,16 +177,48 @@ export default function DriverLayout() {
     profile: 'My Profile' 
   };
 
-  const updateTripStatus = (id, status) => {
-    setTrips(ts => ts.map(t => t.id === id ? { ...t, status } : t));
-    setPanel(p => ({ ...p, trip: { ...p.trip, status } }));
-    toast(`Trip marked as ${status}`);
+  const updateTripStatus = async (id, status) => {
+    try {
+      await updateOrderStatusDriver(id, status === 'active' ? 'in-transit' : status === 'completed' ? 'delivered' : status);
+      setTrips(ts => ts.map(t => t.id === id ? { ...t, status, rawStatus: status === 'active' ? 'in-transit' : status === 'completed' ? 'delivered' : status } : t));
+      setPanel(p => ({ ...p, trip: { ...p.trip, status } }));
+      toast(`Trip marked as ${status}`);
+    } catch (err) {
+      toast(err.message || 'Error updating trip status');
+    }
   };
 
-  const saveProfile = () => {
-    setProfile({ ...editForm });
-    setEditProf(false);
-    toast('Profile saved');
+  const handleAcceptOrder = async (trip) => {
+    try {
+      if (trip.type === 'relocation') {
+        await acceptRelocationDriver(trip.id);
+      } else {
+        await acceptOrderDriver(trip.id);
+      }
+      toast('Order accepted!');
+      await fetchDriverData();
+    } catch (err) {
+      toast(err.message || 'Error accepting order');
+    }
+  };
+
+  const saveProfile = async () => {
+    try {
+      await updateDriverProfile({
+        fullName: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+        licenseNumber: editForm.licence,
+        vehicleDetails: editForm.vehicle,
+        county: editForm.county
+      });
+      setProfile({ ...editForm });
+      setEditProf(false);
+      toast('Profile saved');
+    } catch (err) {
+      toast('Error saving profile');
+      console.error('Save profile error:', err);
+    }
   };
 
   return (
@@ -165,6 +295,7 @@ export default function DriverLayout() {
         setPanel={setPanel}
         trips={trips}
         updateTripStatus={updateTripStatus}
+        handleAcceptOrder={handleAcceptOrder}
       />
 
       <LogoutModal

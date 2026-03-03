@@ -277,15 +277,15 @@ async function trackOrder(req, res) {
     // Try exact match first
     if (id.match(/^[a-f\d]{24}$/i)) {
       order = await Order.findById(id)
-        .populate('client', 'fullName')
-        .populate({ path: 'driver', populate: { path: 'user', select: 'fullName' } });
+        .populate('client', 'fullName phone')
+        .populate({ path: 'driver', populate: { path: 'user', select: 'fullName phone' } });
     }
 
     // If not found, try partial match on hex suffix (last 8 chars)
     if (!order && id.length >= 6) {
       const orders = await Order.find()
-        .populate('client', 'fullName')
-        .populate({ path: 'driver', populate: { path: 'user', select: 'fullName' } })
+        .populate('client', 'fullName phone')
+        .populate({ path: 'driver', populate: { path: 'user', select: 'fullName phone' } })
         .limit(200);
       order = orders.find((o) => o._id.toString().endsWith(id.toLowerCase()));
     }

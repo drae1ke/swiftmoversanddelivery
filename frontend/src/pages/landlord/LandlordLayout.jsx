@@ -1,7 +1,15 @@
 import { useState, useEffect } from "react";
 import '../../styles/LandlordDashboard.css';
-import { nid, getInitials, formatNumber, getPillClass, COUNTIES } from '../../utils/utils';
+import { nid, getInitials, formatNumber, getPillClass, COUNTIES, ICONS, COLORS } from '../../utils/utils';
 import { useLocalToast } from '../../components/common/useLocalToast';
+import {
+  getMyProperties,
+  createProperty as apiCreateProperty,
+  updateProperty as apiUpdateProperty,
+  deleteProperty as apiDeleteProperty,
+  getMe,
+  updateMe,
+} from '../../api';
 
 // Components
 import Sidebar from '../../components/landlord/Sidebar';
@@ -21,71 +29,48 @@ import ConfirmModal from '../../components/landlord/ConfirmModal';
 import LogoutModal from '../../components/landlord/LogoutModal';
 import Toast from '../../components/landlord/Toast';
 
-/* ─── Seed Data ─── */
-const SEED_PROPS = [
-  { 
-    id: 'p1', icon: '🏭', color: 'c0', name: 'Westlands Industrial Units', location: 'Westlands, Nairobi', 
-    units: [
-      { id: 'u1', unitId: 'WIU-01', size: 20, type: 'Standard', status: 'occupied', price: 18000, 
-        tenant: { name: 'James Kariuki', initials: 'JK', phone: '+254 712 111 222', since: '2024-03-01' }, 
-        leaseEnd: '2026-02-01', notes: '' },
-      { id: 'u2', unitId: 'WIU-02', size: 20, type: 'Standard', status: 'occupied', price: 18000, 
-        tenant: { name: 'Amina Odhiambo', initials: 'AO', phone: '+254 722 333 444', since: '2024-06-01' }, 
-        leaseEnd: '2026-05-01', notes: '' },
-      { id: 'u3', unitId: 'WIU-03', size: 35, type: 'Large', status: 'vacant', price: 28000, 
-        tenant: null, leaseEnd: '', notes: '' },
-      { id: 'u4', unitId: 'WIU-04', size: 12, type: 'Small', status: 'maintenance', price: 10000, 
-        tenant: null, leaseEnd: '', notes: 'Roof repair in progress' },
-    ]
-  },
-  { 
-    id: 'p2', icon: '🏢', color: 'c1', name: 'Kilimani Storage Centre', location: 'Kilimani, Nairobi', 
-    units: [
-      { id: 'u5', unitId: 'KSC-01', size: 8, type: 'Small', status: 'occupied', price: 9500, 
-        tenant: { name: 'Peter Mwenda', initials: 'PM', phone: '+254 733 555 666', since: '2024-01-01' }, 
-        leaseEnd: '2025-12-01', notes: '' },
-      { id: 'u6', unitId: 'KSC-02', size: 15, type: 'Medium', status: 'occupied', price: 16000, 
-        tenant: { name: 'Grace Njeri', initials: 'GN', phone: '+254 701 777 888', since: '2024-08-01' }, 
-        leaseEnd: '2025-07-01', notes: '' },
-      { id: 'u7', unitId: 'KSC-03', size: 8, type: 'Small', status: 'vacant', price: 9500, 
-        tenant: null, leaseEnd: '', notes: '' },
-    ]
-  },
-  { 
-    id: 'p3', icon: '🏗️', color: 'c2', name: 'Mombasa Road Warehouse', location: 'Industrial Area, Nairobi', 
-    units: [
-      { id: 'u8', unitId: 'MRW-01', size: 80, type: 'Warehouse', status: 'occupied', price: 52000, 
-        tenant: { name: 'Safiri Logistics', initials: 'SL', phone: '+254 20 123 4567', since: '2023-01-01' }, 
-        leaseEnd: '2025-12-01', notes: '' },
-      { id: 'u9', unitId: 'MRW-02', size: 80, type: 'Warehouse', status: 'occupied', price: 52000, 
-        tenant: { name: 'BuildMart Ltd', initials: 'BL', phone: '+254 20 765 4321', since: '2023-03-01' }, 
-        leaseEnd: '2026-02-01', notes: '' },
-    ]
-  },
-];
+/* ─── Transform backend Property → UI format ─── */
+const STORAGE_TYPE_MAP = {
+  room: 'Standard', garage: 'Standard', warehouse: 'Warehouse',
+  container: 'Large', basement: 'Medium', attic: 'Small', other: 'Standard',
+};
 
-const SEED_PAYMENTS = [
-  { id: 'pay1', tenant: 'James Kariuki', unit: 'WIU-01', amount: 18000, date: '2026-02-01', status: 'paid', type: 'Rent', propId: 'p1' },
-  { id: 'pay2', tenant: 'Amina Odhiambo', unit: 'WIU-02', amount: 18000, date: '2026-02-01', status: 'paid', type: 'Rent', propId: 'p1' },
-  { id: 'pay3', tenant: 'Grace Njeri', unit: 'KSC-02', amount: 16000, date: '2026-02-01', status: 'pending', type: 'Rent', propId: 'p2' },
-  { id: 'pay4', tenant: 'Peter Mwenda', unit: 'KSC-01', amount: 9500, date: '2026-01-01', status: 'paid', type: 'Rent', propId: 'p2' },
-  { id: 'pay5', tenant: 'Safiri Logistics', unit: 'MRW-01', amount: 52000, date: '2026-02-01', status: 'paid', type: 'Rent', propId: 'p3' },
-  { id: 'pay6', tenant: 'BuildMart Ltd', unit: 'MRW-02', amount: 52000, date: '2026-02-01', status: 'overdue', type: 'Rent', propId: 'p3' },
-];
+function transformBackendProps(backendProps) {
+  return backendProps.map((p, i) => ({
+    id: p._id,
+    icon: ICONS[i % ICONS.length],
+    color: COLORS[i % COLORS.length],
+    name: p.title,
+    location: p.address,
+    units: [{
+      id: p._id,
+      unitId: p.title,
+      size: p.sizeSqFt || 0,
+      type: STORAGE_TYPE_MAP[p.storageType] || 'Standard',
+      status: p.availability === 'available' ? 'vacant' : 'occupied',
+      price: p.pricePerMonth || 0,
+      tenant: null,
+      leaseEnd: '',
+      notes: p.description || '',
+    }],
+  }));
+}
 
 export default function LandlordLayout() {
-  const [props, setProps] = useState(SEED_PROPS);
-  const [payments, setPayments] = useState(SEED_PAYMENTS);
+  const [props, setProps] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [page, setPage] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { toasts, toast } = useLocalToast();
 
   // Profile
   const [profile, setProfile] = useState({ 
-    name: 'Sarah Wambui', 
-    email: 'sarah@vaultspace.co.ke', 
-    phone: '+254 722 890 123', 
-    county: 'Nairobi', 
-    idNumber: '29384756' 
+    name: '', 
+    email: '', 
+    phone: '', 
+    county: '', 
+    idNumber: '' 
   });
   const [editProf, setEditProf] = useState(false);
   const [editProfForm, setEditProfForm] = useState({ ...profile });
@@ -108,13 +93,38 @@ export default function LandlordLayout() {
   const [confirm, setConfirm] = useState({ open: false, title: '', desc: '', icon: '⚠️', onOk: () => { } });
   const [logoutMod, setLogoutMod] = useState(false);
 
+  // Fetch data from backend on mount
   useEffect(() => {
-    const el = document.createElement('style');
-    el.setAttribute('data-portal', 'owner');
-    el.textContent = document.querySelector('style[data-portal="owner"]')?.textContent || '';
-    document.head.appendChild(el);
-    return () => el.remove();
+    fetchLandlordData();
   }, []);
+
+  const fetchLandlordData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch properties
+      const backendProps = await getMyProperties();
+      setProps(transformBackendProps(Array.isArray(backendProps) ? backendProps : []));
+
+      // Fetch profile
+      const me = await getMe();
+      const prof = {
+        name: me.fullName || '',
+        email: me.email || '',
+        phone: me.phone || '',
+        county: me.address?.county || '',
+        idNumber: me.idNumber || '',
+      };
+      setProfile(prof);
+      setEditProfForm(prof);
+    } catch (err) {
+      setError(err.message || 'Failed to load data');
+      console.error('Landlord dashboard error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /* Derived */
   const allUnits = props.flatMap(p => p.units.map(u => ({ ...u, propName: p.name, propId: p.id })));
@@ -166,13 +176,28 @@ export default function LandlordLayout() {
     setPropMod({ open: true, mode: 'edit', data: { ...p } }); 
   };
   
-  const saveProp = d => {
-    if (propMod.mode === 'add') { 
-      setProps(ps => [...ps, { ...d, id: nid(), units: [] }]); 
-      toast('Property added'); 
-    } else { 
-      setProps(ps => ps.map(p => p.id === d.id ? { ...p, ...d } : p)); 
-      toast('Property updated'); 
+  const saveProp = async d => {
+    try {
+      if (propMod.mode === 'add') {
+        await apiCreateProperty({
+          title: d.name,
+          description: d.name,
+          address: d.location,
+          storageType: 'room',
+          sizeSqFt: 20,
+          pricePerMonth: 0,
+        });
+        toast('Property added');
+      } else {
+        await apiUpdateProperty(d.id, {
+          title: d.name,
+          address: d.location,
+        });
+        toast('Property updated');
+      }
+      await fetchLandlordData();
+    } catch (err) {
+      toast(err.message || 'Error saving property', 'error');
     }
     setPropMod(m => ({ ...m, open: false }));
   };
@@ -182,9 +207,14 @@ export default function LandlordLayout() {
     icon: '🗑️', 
     title: 'Delete Property?', 
     desc: `"${p.name}" and all its units will be permanently removed.`, 
-    onOk: () => { 
-      setProps(ps => ps.filter(x => x.id !== p.id)); 
-      toast('Property deleted', 'error'); 
+    onOk: async () => { 
+      try {
+        await apiDeleteProperty(p.id);
+        await fetchLandlordData();
+        toast('Property deleted', 'error');
+      } catch (err) {
+        toast(err.message || 'Error deleting property', 'error');
+      }
       setConfirm(c => ({ ...c, open: false })); 
     } 
   });
@@ -295,10 +325,20 @@ export default function LandlordLayout() {
     toast('Marked as paid'); 
   };
 
-  const saveProfile = () => {
-    setProfile({ ...editProfForm });
-    setEditProf(false);
-    toast('Profile saved');
+  const saveProfile = async () => {
+    try {
+      await updateMe({
+        fullName: editProfForm.name,
+        phone: editProfForm.phone,
+        idNumber: editProfForm.idNumber,
+        address: { county: editProfForm.county },
+      });
+      setProfile({ ...editProfForm });
+      setEditProf(false);
+      toast('Profile saved');
+    } catch (err) {
+      toast(err.message || 'Error saving profile', 'error');
+    }
   };
 
   return (

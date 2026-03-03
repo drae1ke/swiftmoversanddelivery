@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../../styles/ClientDashboard.css';
+import { getMe } from '../../api';
 import Sidebar from '../../components/client/Sidebar';
 import Topbar from '../../components/client/Topbar';
 import Services from './Services';
@@ -17,6 +18,7 @@ function  MainClient () {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [currentDate, setCurrentDate] = useState('');
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     const d = new Date();
@@ -26,6 +28,11 @@ function  MainClient () {
       month: 'short',
       year: 'numeric'
     }));
+
+    // Fetch logged-in user's name
+    getMe()
+      .then(user => setUserName(user.fullName?.split(' ')[0] || 'there'))
+      .catch(() => setUserName('there'));
   }, []);
 
   const handleShowPage = (pageId) => {
@@ -91,6 +98,7 @@ function  MainClient () {
         <Services 
           isActive={currentPage === 'services'} 
           onShowPage={handleShowPage}
+          userName={userName}
         />
         
         <Delivery 

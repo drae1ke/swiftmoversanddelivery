@@ -183,6 +183,52 @@ async function assignOrder(req, res) {
   }
 }
 
+// Get single order
+async function getOrderById(req, res) {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('client', 'fullName email phone')
+      .populate({ path: 'driver', populate: { path: 'user', select: 'fullName email phone' } })
+      .populate('rating');
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json(order);
+  } catch (err) {
+    console.error('Admin get order error:', err.message);
+    res.status(500).json({ message: 'Error loading order' });
+  }
+}
+
+// Update order status
+async function updateOrderStatus(req, res) {
+  try {
+    const { status } = req.body;
+    const allowed = ['pending', 'assigned', 'in-transit', 'delivered'];
+    if (!status || !allowed.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const update = { status };
+    if (status === 'delivered') {
+      update.deliveredAt = new Date();
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { $set: update },
+      { new: true },
+    )
+      .populate('client', 'fullName email phone')
+      .populate({ path: 'driver', populate: { path: 'user', select: 'fullName email phone' } });
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json(order);
+  } catch (err) {
+    console.error('Admin update order status error:', err.message);
+    res.status(500).json({ message: 'Error updating order status' });
+  }
+}
+
 // Pricing configuration for weight bands
 async function getPricingConfig(req, res) {
   try {
@@ -459,12 +505,44 @@ async function getAnalytics(req, res) {
   }
 }
 
+// Get all online driver locations for map
+async function getDriverLocations(req, res) {
+  try {
+    const drivers = await Driver.find({ isOnline: true })
+      .populate('user', 'fullName email phone');
+
+    const locations = drivers
+      .filter((d) => d.location && d.location.coordinates && (d.location.coordinates[0] !== 0 || d.location.coordinates[1] !== 0))
+      .map((d) => ({
+        driverId: d._id,
+        userId: d.user?._id,
+        fullName: d.user?.fullName || 'Unknown',
+        phone: d.user?.phone || '',
+        email: d.user?.email || '',
+        vehicleType: d.vehicleType,
+        plateNumber: d.plateNumber,
+        coordinates: d.location.coordinates,
+        lastLocationUpdate: d.lastLocationUpdate,
+        rating: d.rating,
+        totalTrips: d.totalTrips,
+        isOnline: d.isOnline,
+      }));
+
+    res.json(locations);
+  } catch (err) {
+    console.error('Admin driver locations error:', err.message);
+    res.status(500).json({ message: 'Error loading driver locations' });
+  }
+}
+
 module.exports = {
   getDashboard,
   getDrivers,
   updateDriver,
   getOrders,
+  getOrderById,
   assignOrder,
+  updateOrderStatus,
   getPricingConfig,
   updatePricingConfig,
   listUsers,
@@ -476,5 +554,6 @@ module.exports = {
   updatePropertyStatus,
   getRelocations,
   getAnalytics,
+  getDriverLocations,
 };
 

@@ -1,7 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 
 *{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family:'Instrument Serif', Georgia, serif;
+    font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    color: #0F172A;
+    background: #ffffff;
+    line-height: 1.6;
+}
+
+::selection {
+    background: rgba(220, 38, 38, 0.12);
+    color: #0F172A;
 }

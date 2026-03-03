@@ -5,6 +5,8 @@ import Signup from "./components/common/SignUp"
 import ForgotPassword from "./components/common/ForgotPassword"
 import ResetPassword from "./components/common/ResetPassword"
 import ProtectedRoute from "./components/common/ProtectedRoute"
+import ProfileCompletionBanner from "./components/common/ProfileCompletionBanner"
+import { useAuth } from "./context/AuthContext"
 
 import Home from "./pages/Home"
 import Client from "./pages/client/MainClient"
@@ -13,9 +15,11 @@ import AdminDashboard from "./pages/admin/AdminLayout"
 import DriverDashboard from "./pages/driver/driverLayout"
 
 function App() {
+  const { isAuthenticated } = useAuth();
 
   return (
     <BrowserRouter>
+      {isAuthenticated && <ProfileCompletionBanner />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/Login" element={<Login />} />

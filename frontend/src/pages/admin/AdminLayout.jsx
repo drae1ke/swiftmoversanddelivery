@@ -11,6 +11,7 @@ import PropertiesPage from '../../components/admin/PropertiesPage';
 import AlertsPage from '../../components/admin/AlertsPage';
 import SettingsPage from '../../components/admin/SettingsPage';
 import ProfilePage from '../../components/admin/ProfilePage';
+import DriversMapPage from '../../components/admin/DriversMapPage';
 import UserPanel from '../../components/admin/UserPanel';
 import TripPanel from '../../components/admin/TripPanel';
 import UserModal from '../../components/admin/UserModal';
@@ -18,54 +19,36 @@ import ConfirmModal from '../../components/admin/ConfirmModal';
 import LogoutModal from '../../components/admin/LogoutModal';
 import Toast from '../../components/admin/ToastModal';
 
+// API
+import {
+  getAdminDashboard,
+  getAdminUsers,
+  getAdminOrders,
+  getAdminProperties,
+  getMe,
+  updateMe
+} from '../../api';
+
 // Utils
 import { nid } from '../../utils/utils';
 
-/* ─── Seed Data ─── */
-const SEED_USERS = [
-  { id: 'u1', name: 'Sarah Wambui', email: 'sarah@vaultspace.co.ke', role: 'owner', status: 'active', phone: '+254 722 890 123', joined: '2023-01-15', properties: 3, units: 14 },
-  { id: 'u2', name: 'David Otieno', email: 'd.otieno@vaultspace.co.ke', role: 'driver', status: 'active', phone: '+254 711 234 567', joined: '2023-03-20', trips: 42, vehicle: 'KBZ 456T' },
-  { id: 'u3', name: 'James Kariuki', email: 'james.k@gmail.com', role: 'owner', status: 'active', phone: '+254 712 111 222', joined: '2023-06-01', properties: 1, units: 4 },
-  { id: 'u4', name: 'Grace Njeri', email: 'grace.n@gmail.com', role: 'owner', status: 'suspended', phone: '+254 701 777 888', joined: '2024-02-10', properties: 2, units: 8 },
-  { id: 'u5', name: 'Amina Hassan', email: 'amina.h@vaultspace.co.ke', role: 'driver', status: 'pending', phone: '+254 733 445 566', joined: '2026-01-05', trips: 0, vehicle: 'KCA 200Z' },
-  { id: 'u6', name: 'Peter Mwenda', email: 'peter.m@gmail.com', role: 'owner', status: 'active', phone: '+254 733 555 666', joined: '2024-01-01', properties: 1, units: 3 },
-];
-
-const SEED_TRIPS = [
-  { id: 't1', tripId: 'TRP-001', driver: 'David Otieno', status: 'active', from: 'Wilson Airport', to: 'Mombasa Road Warehouse', amount: 12500, date: '2026-02-22' },
-  { id: 't2', tripId: 'TRP-002', driver: 'David Otieno', status: 'pending', from: 'Kilimani Centre', to: 'Westlands Industrial', amount: 6800, date: '2026-02-22' },
-  { id: 't3', tripId: 'TRP-003', driver: 'Amina Hassan', status: 'completed', from: 'Industrial Area', to: 'Roysambu Depot', amount: 18400, date: '2026-02-21' },
-  { id: 't4', tripId: 'TRP-004', driver: 'David Otieno', status: 'completed', from: 'Westlands', to: 'Karen, Nairobi', amount: 4200, date: '2026-02-20' },
-  { id: 't5', tripId: 'TRP-005', driver: 'Amina Hassan', status: 'cancelled', from: 'CBD Pickup Point', to: 'Gigiri', amount: 3100, date: '2026-02-19' },
-];
-
-const SEED_PROPS = [
-  { id: 'p1', name: 'Westlands Industrial Units', owner: 'Sarah Wambui', units: 4, occupied: 2, revenue: 36000, status: 'active' },
-  { id: 'p2', name: 'Kilimani Storage Centre', owner: 'Sarah Wambui', units: 3, occupied: 2, revenue: 25500, status: 'active' },
-  { id: 'p3', name: 'Mombasa Road Warehouse', owner: 'James Kariuki', units: 2, occupied: 2, revenue: 104000, status: 'active' },
-  { id: 'p4', name: 'Thika Road Mini-Storage', owner: 'Grace Njeri', units: 5, occupied: 0, revenue: 0, status: 'inactive' },
-];
-
-const ALERTS = [
-  { type: 'critical', icon: '🚨', title: 'Grace Njeri account suspended', desc: 'Account flagged for overdue payments — 3 invoices outstanding.', time: '1h ago' },
-  { type: 'warning', icon: '⚠️', title: 'Amina Hassan pending verification', desc: 'New driver registration awaiting document review and approval.', time: '3h ago' },
-  { type: 'warning', icon: '⚠️', title: 'Thika Road Mini-Storage has 0% occupancy', desc: '5 units vacant for over 30 days. Owner may need outreach.', time: 'Yesterday' },
-  { type: 'info', icon: 'ℹ️', title: 'System backup completed', desc: 'Nightly backup ran successfully. All data secured offsite.', time: '2 days ago' },
-];
-
 export default function AdminLayout() {
-  const [users, setUsers] = useState(SEED_USERS);
-  const [trips, setTrips] = useState(SEED_TRIPS);
-  const [props, setProps] = useState(SEED_PROPS);
+  const [users, setUsers] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [props, setProps] = useState([]);
   const [page, setPage] = useState('overview');
   const [toasts, setToasts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [adminProfile, setAdminProfile] = useState({
-    name: 'Fatuma Abdi',
-    email: 'f.abdi@vaultspace.co.ke',
-    phone: '+254 720 000 001',
+    name: '',
+    email: '',
+    phone: '',
     role: 'System Administrator',
     access: 'Full Access'
   });
+  
   const [editProf, setEditProf] = useState(false);
   const [editForm, setEditForm] = useState({ ...adminProfile });
   const [userSearch, setUserSearch] = useState('');
@@ -86,11 +69,101 @@ export default function AdminLayout() {
     autoBackup: true
   });
 
+  // Fetch admin data on mount
+  useEffect(() => {
+    fetchAdminData();
+  }, []);
+
+  const fetchAdminData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch dashboard data
+      const dashboardData = await getAdminDashboard();
+      
+      // Fetch users
+      const usersData = await getAdminUsers();
+      const transformedUsers = (usersData.data || []).map(user => ({
+        id: user._id,
+        name: user.fullName || '',
+        email: user.email || '',
+        role: user.role || 'user',
+        status: user.status || 'active',
+        phone: user.phone || '',
+        joined: new Date(user.createdAt).toLocaleDateString(),
+        trips: user.totalTrips || 0,
+        vehicle: user.vehicleDetails || ''
+      }));
+      setUsers(transformedUsers);
+      
+      // Fetch orders/trips
+      const ordersData = await getAdminOrders();
+      const transformedTrips = (ordersData.data || []).map(order => {
+        const driverName = order.driver?.user?.fullName || 'Unassigned';
+        return {
+          id: order._id,
+          tripId: order._id?.slice(-8)?.toUpperCase() || order._id,
+          driver: driverName,
+          status: order.status || 'pending',
+          from: order.pickupAddress || '',
+          to: order.dropoffAddress || '',
+          amount: order.priceKes || 0,
+          customer: order.client?.fullName || 'Unknown',
+          date: new Date(order.createdAt).toLocaleDateString()
+        };
+      });
+      setTrips(transformedTrips);
+      
+      // Fetch properties
+      const propsData = await getAdminProperties();
+      const transformedProps = (propsData.data || []).map(prop => ({
+        id: prop._id,
+        name: prop.name || '',
+        owner: prop.landlord?.fullName || 'Unknown',
+        units: prop.totalUnits || 0,
+        occupied: prop.occupiedUnits || 0,
+        revenue: prop.monthlyRevenue || 0,
+        status: prop.status || 'active'
+      }));
+      setProps(transformedProps);
+      
+      // Fetch admin profile
+      const adminData = await getMe();
+      setAdminProfile({
+        name: adminData.fullName || '',
+        email: adminData.email || '',
+        phone: adminData.phone || '',
+        role: 'System Administrator',
+        access: 'Full Access'
+      });
+      setEditForm({
+        name: adminData.fullName || '',
+        email: adminData.email || '',
+        phone: adminData.phone || '',
+        role: 'System Administrator',
+        access: 'Full Access'
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to load admin data');
+      console.error('Admin dashboard error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toast = (msg, type = 'success') => {
     const id = nid();
     setToasts(t => [...t, { id, msg, type }]);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
   };
+
+  // Default alerts data (can be integrated with backend later)
+  const ALERTS = [
+    { type: 'critical', icon: '🚨', title: 'System check required', desc: 'Some deliveries pending assignment.', time: '1h ago' },
+    { type: 'warning', icon: '⚠️', title: 'User verification pending', desc: 'New user registrations awaiting review.', time: '3h ago' },
+    { type: 'info', icon: 'ℹ️', title: 'System backup completed', desc: 'Nightly backup ran successfully.', time: '2 days ago' },
+  ];
 
   const totalRevenue = props.reduce((a, p) => a + p.revenue, 0);
   const activeUsers = users.filter(u => u.status === 'active').length;
@@ -118,6 +191,7 @@ export default function AdminLayout() {
     users: 'Users',
     trips: 'Trips',
     properties: 'Properties',
+    driversmap: 'Drivers Map',
     alerts: 'Alerts',
     settings: 'Settings',
     profile: 'Admin Profile'
@@ -152,10 +226,19 @@ export default function AdminLayout() {
     setUserModal(m => ({ ...m, open: false }));
   };
 
-  const saveProfile = () => {
-    setAdminProfile({ ...editForm });
-    setEditProf(false);
-    toast('Profile saved');
+  const saveProfile = async () => {
+    try {
+      await updateMe({
+        fullName: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone
+      });
+      setAdminProfile({ ...editForm });
+      setEditProf(false);
+      toast('Profile saved');
+    } catch (err) {
+      toast('Error saving profile', 'error');
+    }
   };
 
   return (
@@ -215,6 +298,8 @@ export default function AdminLayout() {
           propSearch={propSearch}
           setPropSearch={setPropSearch}
         />
+
+        <DriversMapPage active={page === 'driversmap'} />
 
         <AlertsPage active={page === 'alerts'} ALERTS={ALERTS} />
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import FormProgress from '../../components/client/FormProgress';
 import RadioCard from '../../components/client/RadioCard';
 import SuccessCard from '../../components/client/SucccessCard';
+import { createOrder } from '../../api';
 
 const Cargo = ({ isActive, onShowPage }) => {
   const [step, setStep] = useState(1);
@@ -16,7 +17,9 @@ const Cargo = ({ isActive, onShowPage }) => {
     insurance: 'Yes',
     requirements: ''
   });
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [successData, setSuccessData] = useState(null);
 
   const handleNextStep = (nextStep) => {
     setStep(nextStep);
@@ -26,12 +29,35 @@ const Cargo = ({ isActive, onShowPage }) => {
     onShowPage('services');
   };
 
-  const handleGetQuote = () => {
-    setShowSuccess(true);
+  const handleGetQuote = async () => {
+    if (!formData.weight) {
+      setError('Please enter the cargo weight.');
+      return;
+    }
+    const vehicleMap = { 'Pickup': 'van', '3-Tonne': 'van', '14-Tonne': 'lorry' };
+    try {
+      setSubmitting(true);
+      setError(null);
+      const order = await createOrder({
+        pickupAddress: `${formData.originCounty}, Kenya`,
+        dropoffAddress: `${formData.destCounty}, Kenya`,
+        recipientName: 'Cargo Recipient',
+        recipientPhone: '',
+        distanceKm: 10,
+        packageWeightKg: Number(formData.weight) * 1000,
+        vehicleType: vehicleMap[formData.vehicle] || 'lorry',
+        serviceType: 'Standard',
+      });
+      setSuccessData(order);
+    } catch (err) {
+      setError(err.message || 'Failed to submit cargo request');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleBackToServices = () => {
-    setShowSuccess(false);
+    setSuccessData(null);
     setStep(1);
     onShowPage('services');
   };
@@ -53,10 +79,14 @@ const Cargo = ({ isActive, onShowPage }) => {
       </div>
 
       <div className="form-shell">
-        {!showSuccess && <FormProgress steps={steps} currentStep={step} />}
+        {!successData && <FormProgress steps={steps} currentStep={step} />}
+
+        {error && (
+          <div style={{ color: '#e53e3e', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>
+        )}
 
         {/* Step 1: Cargo Info */}
-        {step === 1 && !showSuccess && (
+        {step === 1 && !successData && (
           <div className="form-card">
             <div className="form-card-title">Cargo Details</div>
             <div className="field-group">
@@ -186,18 +216,20 @@ const Cargo = ({ isActive, onShowPage }) => {
             </div>
             <div className="form-actions">
               <button className="btn btn-outline" onClick={handleBack}>← Back</button>
-              <button className="btn btn-primary" onClick={handleGetQuote}>Get Quote →</button>
+              <button className="btn btn-primary" onClick={handleGetQuote} disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Get Quote →'}
+              </button>
             </div>
           </div>
         )}
 
         {/* Success */}
-        {showSuccess && (
+        {successData && (
           <SuccessCard
             icon="🚛"
             title="Cargo Request Submitted!"
-            message="Our logistics team will review your request and send you a price quote within 1 hour. You'll receive an SMS and email confirmation."
-            trackingCode="CG-2025-33901"
+            message={`Your ${formData.cargoType.toLowerCase()} shipment from ${formData.originCounty} to ${formData.destCounty} has been submitted. Estimated cost: KES ${successData.priceKes?.toLocaleString() || '—'}. Our logistics team will confirm shortly.`}
+            trackingCode={successData._id}
             onBack={handleBackToServices}
           />
         )}

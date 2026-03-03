@@ -56,10 +56,28 @@ const driverSchema = new mongoose.Schema(
         default: [0, 0],
       },
     },
+    lastLocationUpdate: {
+      type: Date,
+    },
+    totalRatings: {
+      type: Number,
+      default: 0,
+    },
+    averageRating: {
+      type: Number,
+      default: 5.0,
+      min: 0,
+      max: 5,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Geospatial index for location-based queries
+driverSchema.index({ location: '2dsphere' });
+driverSchema.index({ isOnline: 1 });
+driverSchema.index({ user: 1 });
 
 module.exports = mongoose.model('Driver', driverSchema);

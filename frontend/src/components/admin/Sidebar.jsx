@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   FaChartPie, FaUsers, FaTruck, FaBuilding, 
-  FaExclamationTriangle, FaCog, FaUser, FaSignOutAlt 
+  FaExclamationTriangle, FaCog, FaUser, FaSignOutAlt, FaMapMarkedAlt 
 } from 'react-icons/fa';
 
 export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, pendingUsers, activeTrips, criticalAlerts }) {
@@ -11,6 +11,7 @@ export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, p
     { id: 'users', icon: FaUsers, label: 'Users' },
     { id: 'trips', icon: FaTruck, label: 'Trips' },
     { id: 'properties', icon: FaBuilding, label: 'Properties' },
+    { id: 'driversmap', icon: FaMapMarkedAlt, label: 'Drivers Map' },
     { section: 'System' },
     { id: 'alerts', icon: FaExclamationTriangle, label: 'Alerts' },
     { id: 'settings', icon: FaCog, label: 'Settings' },

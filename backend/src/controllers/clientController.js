@@ -32,7 +32,7 @@ async function getOrders(req, res) {
         path: 'driver',
         populate: {
           path: 'user',
-          select: 'fullName email',
+          select: 'fullName email phone',
         },
       });
 
@@ -53,7 +53,7 @@ async function getOrderById(req, res) {
       path: 'driver',
       populate: {
         path: 'user',
-        select: 'fullName email',
+        select: 'fullName email phone',
       },
     });
 
@@ -145,7 +145,7 @@ async function trackOrder(req, res) {
       path: 'driver',
       populate: {
         path: 'user',
-        select: 'fullName email',
+        select: 'fullName email phone',
       },
     });
 

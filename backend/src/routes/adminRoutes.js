@@ -19,11 +19,18 @@ router.patch(
 
 // Orders
 router.get('/orders', authenticate, authorizeRoles('admin'), adminController.getOrders);
+router.get('/orders/:id', authenticate, authorizeRoles('admin'), adminController.getOrderById);
 router.patch(
   '/orders/:id/assign',
   authenticate,
   authorizeRoles('admin'),
   adminController.assignOrder,
+);
+router.patch(
+  '/orders/:id/status',
+  authenticate,
+  authorizeRoles('admin'),
+  adminController.updateOrderStatus,
 );
 
 // Pricing configuration
@@ -63,5 +70,13 @@ router.get('/relocations', authenticate, authorizeRoles('admin'), adminControlle
 
 // Analytics
 router.get('/analytics', authenticate, authorizeRoles('admin'), adminController.getAnalytics);
+
+// Driver locations for map
+router.get(
+  '/drivers/locations',
+  authenticate,
+  authorizeRoles('admin'),
+  adminController.getDriverLocations,
+);
 
 module.exports = router;

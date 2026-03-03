@@ -1,16 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getMe, updateMe, getMyOrders } from '../../api';
 
 const Profile = ({ isActive, onShowPage }) => {
   const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [profileData, setProfileData] = useState({
-    fullName: 'James Mwangi',
-    phone: '+254 712 345 678',
-    email: 'james.mwangi@email.com',
-    county: 'Nairobi',
-    idNumber: '12345678'
+    fullName: '',
+    phone: '',
+    email: '',
+    county: '',
+    idNumber: ''
   });
 
   const [editFormData, setEditFormData] = useState({ ...profileData });
+  const [deliveryHistory, setDeliveryHistory] = useState([]);
+  const [stats, setStats] = useState({
+    totalDeliveries: 0,
+    activeOrders: 0,
+    rating: 4.5
+  });
+
+  // Load profile and orders on mount
+  useEffect(() => {
+    if (isActive) {
+      fetchProfileAndOrders();
+    }
+  }, [isActive]);
+
+  const fetchProfileAndOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch user profile
+      const userProfile = await getMe();
+      setProfileData({
+        fullName: userProfile.fullName || '',
+        phone: userProfile.phone || '',
+        email: userProfile.email || '',
+        county: userProfile.county || '',
+        idNumber: userProfile.idNumber || ''
+      });
+      setEditFormData({
+        fullName: userProfile.fullName || '',
+        phone: userProfile.phone || '',
+        email: userProfile.email || '',
+        county: userProfile.county || '',
+        idNumber: userProfile.idNumber || ''
+      });
+      
+      // Fetch user's orders
+      const ordersData = await getMyOrders();
+      const orders = ordersData.orders || [];
+      
+      // Transform orders to delivery history format
+      const history = orders.map(order => ({
+        tracking: order._id,
+        route: `${order.pickupLocation} → ${order.deliveryLocation}`,
+        service: order.serviceType || 'Delivery',
+        date: new Date(order.createdAt).toLocaleDateString(),
+        status: order.status
+      }));
+      
+      setDeliveryHistory(history);
+      
+      // Calculate stats
+      setStats({
+        totalDeliveries: orders.length,
+        activeOrders: orders.filter(o => o.status !== 'delivered').length,
+        rating: userProfile.rating || 4.5
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to load profile');
+      console.error('Profile error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleEditMode = () => {
     if (editMode) {
@@ -20,28 +87,25 @@ const Profile = ({ isActive, onShowPage }) => {
     setEditMode(!editMode);
   };
 
-  const saveProfile = () => {
-    setProfileData({ ...editFormData });
-    setEditMode(false);
-    alert('✓ Profile saved');
+  const saveProfile = async () => {
+    try {
+      setLoading(true);
+      await updateMe(editFormData);
+      setProfileData({ ...editFormData });
+      setEditMode(false);
+      alert('✓ Profile saved');
+    } catch (err) {
+      setError(err.message || 'Failed to save profile');
+      console.error('Save error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const trackFromHistory = (code) => {
+    sessionStorage.setItem('trackingCode', code);
     onShowPage('tracking');
-    // In a real app, this would set the tracking code and load the data
-    setTimeout(() => {
-      const event = new CustomEvent('trackShipment', { detail: { code } });
-      window.dispatchEvent(event);
-    }, 100);
   };
-
-  const deliveryHistory = [
-    { tracking: 'SD-2025-48271', route: 'Nairobi → Kisumu', service: 'Express Delivery', date: '15 Jan 2025', status: 'delivered' },
-    { tracking: 'SD-2025-39104', route: 'Mombasa → Nairobi', service: 'Standard Delivery', date: '8 Jan 2025', status: 'delivered' },
-    { tracking: 'CG-2025-33901', route: 'Nairobi → Eldoret', service: 'Cargo (3T)', date: '2 Jan 2025', status: 'transit' },
-    { tracking: 'SD-2024-91822', route: 'Kisumu → Nakuru', service: 'Express Delivery', date: '28 Dec 2024', status: 'delivered' },
-    { tracking: 'RL-2024-05512', route: 'Nairobi CBD → Kiambu', service: 'Relocation', date: '15 Dec 2024', status: 'delivered' }
-  ];
 
   if (!isActive) return null;
 
@@ -57,28 +121,28 @@ const Profile = ({ isActive, onShowPage }) => {
         {/* Left card */}
         <div>
           <div className="profile-card">
-            <div className="profile-avatar-lg">JM</div>
-            <div className="profile-name">{profileData.fullName}</div>
+            <div className="profile-avatar-lg">{profileData.fullName?.substring(0, 2).toUpperCase() || 'US'}</div>
+            <div className="profile-name">{profileData.fullName || 'User'}</div>
             <div className="profile-email">{profileData.email}</div>
             <div className="profile-stats">
               <div className="profile-stat">
-                <div className="profile-stat-val">12</div>
+                <div className="profile-stat-val">{stats.totalDeliveries}</div>
                 <div className="profile-stat-lbl">Deliveries</div>
               </div>
               <div className="profile-stat">
-                <div className="profile-stat-val">3</div>
+                <div className="profile-stat-val">{stats.activeOrders}</div>
                 <div className="profile-stat-lbl">Active</div>
               </div>
               <div className="profile-stat">
-                <div className="profile-stat-val">1</div>
+                <div className="profile-stat-val">—</div>
                 <div className="profile-stat-lbl">Storage</div>
               </div>
               <div className="profile-stat">
-                <div className="profile-stat-val">4.9★</div>
+                <div className="profile-stat-val">{stats.rating}★</div>
                 <div className="profile-stat-lbl">Rating</div>
               </div>
             </div>
-            <button className="edit-profile-btn" onClick={toggleEditMode}>
+            <button className="edit-profile-btn" onClick={toggleEditMode} disabled={loading}>
               ✏️ {editMode ? 'Cancel' : 'Edit Profile'}
             </button>
           </div>
@@ -86,6 +150,8 @@ const Profile = ({ isActive, onShowPage }) => {
 
         {/* Right panels */}
         <div className="profile-content">
+          {error && <div style={{ color: 'red', marginBottom: '1rem' }}>Error: {error}</div>}
+          
           {/* Personal Info */}
           <div className="info-card">
             <div className="info-card-header">
@@ -170,11 +236,11 @@ const Profile = ({ isActive, onShowPage }) => {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                  <button className="btn btn-outline" onClick={toggleEditMode}>
+                  <button className="btn btn-outline" onClick={toggleEditMode} disabled={loading}>
                     Cancel
                   </button>
-                  <button className="btn btn-primary" onClick={saveProfile}>
-                    Save Changes
+                  <button className="btn btn-primary" onClick={saveProfile} disabled={loading}>
+                    {loading ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </div>

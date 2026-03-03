@@ -1,7 +1,7 @@
 import React from 'react';
-import { FaTimes, FaPlay, FaCheck, FaBan } from 'react-icons/fa';
+import { FaTimes, FaPlay, FaCheck, FaBan, FaPhone, FaHandshake } from 'react-icons/fa';
 
-export default function TripPanel({ panel, setPanel, trips, updateTripStatus }) {
+export default function TripPanel({ panel, setPanel, trips, updateTripStatus, handleAcceptOrder }) {
   if (!panel.open || !panel.trip) return null;
 
   const t = trips.find(x => x.id === panel.trip.id) || panel.trip;
@@ -23,10 +23,12 @@ export default function TripPanel({ panel, setPanel, trips, updateTripStatus }) 
               ['Customer', t.customer],
               ['Date', t.date],
               ['Time', t.time],
-              ['Duration', t.duration],
+              ['Type', t.type === 'relocation' ? 'Relocation' : 'Delivery'],
               ['Cargo', t.cargo],
               ['Weight', t.weight],
-              ['Amount', `KES ${t.amount.toLocaleString()}`],
+              ['Vehicle', t.vehicleType || '—'],
+              ['Service', t.serviceType || 'Standard'],
+              ['Amount', `KES ${(t.amount || 0).toLocaleString()}`],
               ['Status', t.status]
             ].map(([l, v]) => (
               <div key={l} className="dp-ir">
@@ -43,6 +45,47 @@ export default function TripPanel({ panel, setPanel, trips, updateTripStatus }) 
               </div>
             )}
           </div>
+
+          {/* Client contact info */}
+          {(t.customer || t.customerPhone) && (
+            <div>
+              <span className="dp-psec">Client Contact</span>
+              <div style={{ 
+                padding: '14px', 
+                background: 'var(--off)', 
+                border: '1px solid var(--border-l)', 
+                borderRadius: 'var(--r)',
+                marginBottom: 8
+              }}>
+                <div className="dp-ir">
+                  <span className="dp-ir-l">Name</span>
+                  <span className="dp-ir-v">{t.customer}</span>
+                </div>
+                {t.customerPhone && (
+                  <div className="dp-ir">
+                    <span className="dp-ir-l">Phone</span>
+                    <span className="dp-ir-v">
+                      <a href={`tel:${t.customerPhone}`} style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                        <FaPhone size={10} style={{ marginRight: 4 }} />{t.customerPhone}
+                      </a>
+                    </span>
+                  </div>
+                )}
+                {t.customerEmail && (
+                  <div className="dp-ir">
+                    <span className="dp-ir-l">Email</span>
+                    <span className="dp-ir-v">{t.customerEmail}</span>
+                  </div>
+                )}
+              </div>
+              {t.customerPhone && (
+                <a href={`tel:${t.customerPhone}`} className="dp-btn dp-btn-outline" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>
+                  <FaPhone /> Call Client
+                </a>
+              )}
+            </div>
+          )}
+
           <div>
             <span className="dp-psec">Route</span>
             <div style={{ 
@@ -64,26 +107,35 @@ export default function TripPanel({ panel, setPanel, trips, updateTripStatus }) 
               </div>
             </div>
           </div>
-          {(t.status === 'pending' || t.status === 'active') && (
-            <div>
-              <span className="dp-psec">Actions</span>
-              <div className="dp-prow">
-                {t.status === 'pending' && (
-                  <button className="dp-btn dp-btn-success" onClick={() => updateTripStatus(t.id, 'active')}>
-                    <FaPlay /> Start Trip
-                  </button>
-                )}
-                {t.status === 'active' && (
-                  <button className="dp-btn dp-btn-primary" onClick={() => updateTripStatus(t.id, 'completed')}>
-                    <FaCheck /> Complete
-                  </button>
-                )}
+
+          <div>
+            <span className="dp-psec">Actions</span>
+            <div className="dp-prow">
+              {/* Accept button for pending unassigned orders */}
+              {t.status === 'pending' && t.rawStatus === 'pending' && handleAcceptOrder && (
+                <button className="dp-btn dp-btn-success" onClick={() => handleAcceptOrder(t)}>
+                  <FaHandshake /> Accept Order
+                </button>
+              )}
+              {/* Start trip for assigned orders */}
+              {t.status === 'active' && t.rawStatus === 'assigned' && (
+                <button className="dp-btn dp-btn-success" onClick={() => updateTripStatus(t.id, 'active')}>
+                  <FaPlay /> Start Trip
+                </button>
+              )}
+              {/* Complete for in-transit */}
+              {t.status === 'active' && t.rawStatus === 'in-transit' && (
+                <button className="dp-btn dp-btn-primary" onClick={() => updateTripStatus(t.id, 'completed')}>
+                  <FaCheck /> Complete
+                </button>
+              )}
+              {(t.status === 'pending' || t.status === 'active') && (
                 <button className="dp-btn dp-btn-danger" onClick={() => updateTripStatus(t.id, 'cancelled')}>
                   <FaBan /> Cancel
                 </button>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </>

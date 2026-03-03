@@ -23,6 +23,33 @@ const userSchema = new mongoose.Schema(
       enum: ['client', 'driver', 'admin', 'landlord'],
       default: 'client',
     },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      street: { type: String, trim: true },
+      city: { type: String, trim: true },
+      county: { type: String, trim: true },
+      country: { type: String, default: 'Kenya' },
+    },
+    licenseNumber: {
+      type: String,
+      trim: true,
+    },
+    idNumber: {
+      type: String,
+      trim: true,
+    },
+    profileComplete: {
+      type: Boolean,
+      default: false,
+    },
+    notificationPreferences: {
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: false },
+      push: { type: Boolean, default: true },
+    },
     passwordResetToken: {
       type: String,
     },

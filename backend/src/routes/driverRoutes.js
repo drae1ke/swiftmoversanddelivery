@@ -27,5 +27,29 @@ router.patch(
   authorizeRoles('driver'),
   driverController.updateOrderStatus,
 );
+router.patch(
+  '/orders/:id/accept',
+  authenticate,
+  authorizeRoles('driver'),
+  driverController.acceptOrder,
+);
+router.patch(
+  '/relocations/:id/accept',
+  authenticate,
+  authorizeRoles('driver'),
+  driverController.acceptRelocation,
+);
+router.get(
+  '/my-orders',
+  authenticate,
+  authorizeRoles('driver'),
+  driverController.getMyOrders,
+);
+router.get(
+  '/my-relocations',
+  authenticate,
+  authorizeRoles('driver'),
+  driverController.getMyRelocations,
+);
 
 module.exports = router;

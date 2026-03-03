@@ -29,7 +29,7 @@ router.put(
   propertyController.updateProperty,
 );
 router.delete(
-  '//:id',
+  '/:id',
   authenticate,
   authorizeRoles('landlord'),
   propertyController.deleteProperty,

@@ -1,7 +1,7 @@
 /* About Section Styles */
 .about-section {
   padding: 5rem 0;
-  background-color: #dd3333;
+  background-color: #0F172A;
 }
 
 .about-container {
@@ -12,7 +12,7 @@
   grid-template-columns: 1fr;
   gap: 3rem;
   align-items: center;
-  background-color: #03295c;
+  background-color: #0F172A;
 }
 
 @media (min-width: 768px) {
@@ -74,21 +74,21 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 2rem;
-  background-color: #ffffff;
-  color: #0693e3;
+  background-color: #DC2626;
+  color: #ffffff;
   text-decoration: none;
   font-weight: 600;
   font-size: 1rem;
   border-radius: 0.5rem;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
 }
 
 .read-more-link:hover {
-  background-color: #dd3333;
+  background-color: #B91C1C;
   color: #ffffff;
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.35);
 }
 
 .read-more-link i {

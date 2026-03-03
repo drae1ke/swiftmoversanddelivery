@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaBell } from 'react-icons/fa';
+import NotificationsDropdown from '../common/NotificationsDropdown';
 
 const Topbar = ({ title, date, onToggleSidebar }) => {
   return (
@@ -9,10 +9,7 @@ const Topbar = ({ title, date, onToggleSidebar }) => {
       </button>
       <span className="topbar-title">{title}</span>
       <span className="topbar-subtitle">{date}</span>
-      <button className="topbar-notif" title="Notifications">
-        <FaBell />
-        <span className="notif-dot"></span>
-      </button>
+      <NotificationsDropdown />
     </header>
   );
 };

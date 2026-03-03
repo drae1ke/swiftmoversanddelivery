@@ -88,7 +88,155 @@ async function sendPasswordResetEmail({ to, resetUrl }) {
   });
 }
 
+async function sendOrderCreatedEmail({ to, clientName, order }) {
+  if (!to) return;
+
+  const from = process.env.SMTP_FROM || 'no-reply@swiftmovers.local';
+  const subject = `Order Confirmation - SwiftDeliver #${order._id?.toString().slice(-6) || 'NEW'}`;
+
+  const text = [
+    `Hello ${clientName},`,
+    '',
+    `Your delivery order has been created successfully!`,
+    '',
+    `Order Details:`,
+    `Pickup: ${order.pickupAddress}`,
+    `Dropoff: ${order.dropoffAddress}`,
+    `Service: ${order.serviceType || 'Standard'}`,
+    `Price: KES ${order.priceKes}`,
+    '',
+    `We'll notify you once a driver is assigned.`,
+    '',
+    `Track your order at: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/Client`,
+    '',
+    `Thank you for choosing SwiftDeliver!`,
+  ].join('\n');
+
+  try {
+    const transport = getTransporter();
+    await transport.sendMail({ from, to, subject, text });
+  } catch (err) {
+    console.error('Error sending order created email:', err.message);
+  }
+}
+
+async function sendOrderAssignedEmail({ to, clientName, order, driverName }) {
+  if (!to) return;
+
+  const from = process.env.SMTP_FROM || 'no-reply@swiftmovers.local';
+  const subject = `Driver Assigned - SwiftDeliver #${order._id?.toString().slice(-6)}`;
+
+  const text = [
+    `Hello ${clientName},`,
+    '',
+    `Great news! Your order has been assigned to ${driverName}.`,
+    '',
+    `Order Details:`,
+    `Pickup: ${order.pickupAddress}`,
+    `Dropoff: ${order.dropoffAddress}`,
+    `Price: KES ${order.priceKes}`,
+    '',
+    `Track your driver in real-time from your dashboard.`,
+    '',
+    `Thank you for using SwiftDeliver!`,
+  ].join('\n');
+
+  try {
+    const transport = getTransporter();
+    await transport.sendMail({ from, to, subject, text });
+  } catch (err) {
+    console.error('Error sending order assigned email:', err.message);
+  }
+}
+
+async function sendOrderInTransitEmail({ to, clientName, order, driverName }) {
+  if (!to) return;
+
+  const from = process.env.SMTP_FROM || 'no-reply@swiftmovers.local';
+  const subject = `On the Way - SwiftDeliver #${order._id?.toString().slice(-6)}`;
+
+  const text = [
+    `Hello ${clientName},`,
+    '',
+    `${driverName} is on the way with your delivery!`,
+    '',
+    `Dropoff: ${order.dropoffAddress}`,
+    `Recipient: ${order.recipientName || 'You'}`,
+    '',
+    `Track the driver's location in real-time from your dashboard.`,
+    '',
+    `Thank you for using SwiftDeliver!`,
+  ].join('\n');
+
+  try {
+    const transport = getTransporter();
+    await transport.sendMail({ from, to, subject, text });
+  } catch (err) {
+    console.error('Error sending order in-transit email:', err.message);
+  }
+}
+
+async function sendProfileIncompleteEmail({ to, userName, missingFields }) {
+  if (!to) return;
+
+  const from = process.env.SMTP_FROM || 'no-reply@swiftmovers.local';
+  const subject = 'Complete Your SwiftDeliver Profile';
+
+  const text = [
+    `Hello ${userName},`,
+    '',
+    `We noticed your profile is incomplete. To enjoy the full benefits of SwiftDeliver, please complete your profile.`,
+    '',
+    `Missing information:`,
+    ...missingFields.map(field => `- ${field}`),
+    '',
+    `Complete your profile at: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile`,
+    '',
+    `Thank you for being part of SwiftDeliver!`,
+  ].join('\n');
+
+  try {
+    const transport = getTransporter();
+    await transport.sendMail({ from, to, subject, text });
+  } catch (err) {
+    console.error('Error sending profile incomplete email:', err.message);
+  }
+}
+
+async function sendDriverRatingEmail({ to, driverName, rating, comment }) {
+  if (!to) return;
+
+  const from = process.env.SMTP_FROM || 'no-reply@swiftmovers.local';
+  const subject = 'You Received a New Rating - SwiftDeliver';
+
+  const stars = '⭐'.repeat(Math.round(rating));
+
+  const text = [
+    `Hello ${driverName},`,
+    '',
+    `Great job! You received a ${rating}/5 rating ${stars}`,
+    '',
+    comment ? `Feedback: "${comment}"` : '',
+    '',
+    `Keep up the excellent work!`,
+    '',
+    `View your ratings dashboard at: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/DriverDashboard`,
+  ].join('\n');
+
+  try {
+    const transport = getTransporter();
+    await transport.sendMail({ from, to, subject, text });
+  } catch (err) {
+    console.error('Error sending driver rating email:', err.message);
+  }
+}
+
 module.exports = {
   sendOrderArrivalEmail,
   sendPasswordResetEmail,
+  sendOrderCreatedEmail,
+  sendOrderAssignedEmail,
+  sendOrderInTransitEmail,
+  sendProfileIncompleteEmail,
+  sendDriverRatingEmail,
 };
