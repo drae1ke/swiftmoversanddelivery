@@ -1,7 +1,8 @@
 import React from 'react';
-import { 
-  FaChartPie, FaUsers, FaTruck, FaBuilding, 
-  FaExclamationTriangle, FaCog, FaUser, FaSignOutAlt, FaMapMarkedAlt 
+import {
+  FaChartPie, FaUsers, FaTruck, FaBuilding,
+  FaExclamationTriangle, FaCog, FaUser, FaSignOutAlt,
+  FaMapMarkedAlt, FaBoxOpen
 } from 'react-icons/fa';
 
 export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, pendingUsers, activeTrips, criticalAlerts }) {
@@ -9,6 +10,7 @@ export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, p
     { section: 'Management' },
     { id: 'overview', icon: FaChartPie, label: 'Overview' },
     { id: 'users', icon: FaUsers, label: 'Users' },
+    { id: 'orders', icon: FaBoxOpen, label: 'Orders' },       // ← new
     { id: 'trips', icon: FaTruck, label: 'Trips' },
     { id: 'properties', icon: FaBuilding, label: 'Properties' },
     { id: 'driversmap', icon: FaMapMarkedAlt, label: 'Drivers Map' },
@@ -26,14 +28,12 @@ export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, p
     return null;
   };
 
-  const getInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
+  const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'AD';
 
   return (
     <aside className="ap-sidebar">
       <div className="ap-logo">
-        <div className="ap-logo-mark">Vault<span>Space</span></div>
+        <div className="ap-logo-mark">Swift<span>Deliver</span></div>
         <div className="ap-logo-sub">Admin Console</div>
       </div>
       <nav className="ap-nav">

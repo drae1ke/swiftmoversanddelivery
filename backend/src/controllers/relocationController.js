@@ -1,221 +1,74 @@
-const https = require('https');
-
-const RelocationRequest = require('../models/RelocationRequest');
 const Driver = require('../models/Driver');
-const PricingConfig = require('../models/PricingConfig');
+const RelocationRequest = require('../models/Relocationrequest');
+const { initiateSelfDispatchWindow, canAdminOverride } = require('../services/Relocationautoassign');
 
-// Helper function to get distance from OpenRouteService
-async function getDistanceKmFromOpenRouteService(origin, destination) {
-  const apiKey = process.env.ORS_API_KEY;
-  if (!apiKey || !origin || !destination) {
-    return null;
-  }
+// ─── Pricing ──────────────────────────────────────────────────────────────────
 
-  function getJson(path) {
-    return new Promise((resolve) => {
-      const options = {
-        hostname: 'api.openrouteservice.org',
-        path,
-        method: 'GET',
-        headers: {
-          Authorization: apiKey,
-        },
-      };
-
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data));
-          } catch (err) {
-            console.error('OpenRouteService parse error:', err.message);
-            resolve(null);
-          }
-        });
-      });
-
-      req.on('error', (err) => {
-        console.error('OpenRouteService request error:', err.message);
-        resolve(null);
-      });
-
-      req.end();
-    });
-  }
-
-  try {
-    const encOrigin = encodeURIComponent(origin);
-    const encDest = encodeURIComponent(destination);
-
-    const geo1 = await getJson(`/geocode/search?text=${encOrigin}&size=1`);
-    const geo2 = await getJson(`/geocode/search?text=${encDest}&size=1`);
-
-    const coords1 =
-      geo1 &&
-      geo1.features &&
-      geo1.features[0] &&
-      geo1.features[0].geometry &&
-      geo1.features[0].geometry.coordinates;
-    const coords2 =
-      geo2 &&
-      geo2.features &&
-      geo2.features[0] &&
-      geo2.features[0].geometry &&
-      geo2.features[0].geometry.coordinates;
-
-    if (!coords1 || !coords2 || coords1.length < 2 || coords2.length < 2) {
-      console.error('OpenRouteService geocoding failed');
-      return null;
-    }
-
-    const start = `${coords1[0]},${coords1[1]}`;
-    const end = `${coords2[0]},${coords2[1]}`;
-
-    const directions = await getJson(`/v2/directions/driving-car?start=${start}&end=${end}`);
-    if (
-      directions &&
-      directions.features &&
-      directions.features[0] &&
-      directions.features[0].properties &&
-      directions.features[0].properties.summary &&
-      typeof directions.features[0].properties.summary.distance === 'number'
-    ) {
-      const meters = directions.features[0].properties.summary.distance;
-      return meters / 1000;
-    }
-
-    console.error('OpenRouteService directions missing distance');
-    return null;
-  } catch (err) {
-    console.error('OpenRouteService distance error:', err.message);
-    return null;
-  }
-}
-
-// Helper function to calculate price
-async function calculateRelocationPrice(distanceKm, vehicleType, serviceType) {
-  let baseRate = 50;
-  let perKm = baseRate;
-
-  try {
-    const config = await PricingConfig.findOne().lean();
-    if (config && typeof config.baseCostPerKm === 'number') {
-      baseRate = config.baseCostPerKm;
-      perKm = baseRate;
-    }
-  } catch (err) {
-    console.error('Price config lookup error:', err.message);
-  }
-
-  let vehicleFactor = 1;
-  if (vehicleType === 'bike') vehicleFactor = 0.8;
-  else if (vehicleType === 'car') vehicleFactor = 1;
-  else if (vehicleType === 'van') vehicleFactor = 1.5;
-  else if (vehicleType === 'lorry') vehicleFactor = 2;
-  else if (vehicleType === 'bicycle') vehicleFactor = 0.6;
-
-  let serviceFactor = 1;
-  if (serviceType === 'Express') serviceFactor = 1.5;
-  else if (serviceType === 'Same Day') serviceFactor = 1.3;
-
-  const price = Math.round(distanceKm * perKm * vehicleFactor * serviceFactor);
-  return price;
-}
-
-// Get pricing configuration
 async function getPricing(req, res) {
   try {
-    const config = await PricingConfig.findOne().lean();
     res.json({
-      baseCostPerKm: config?.baseCostPerKm || 50,
-      vehicleTypes: ['bicycle', 'bike', 'car', 'van', 'lorry'],
-      serviceTypes: ['Standard', 'Same Day', 'Express'],
+      basePrice: 2500,
+      pricePerKm: 80,
+      vehicleMultipliers: {
+        bicycle: 0.6,
+        bike: 0.8,
+        car: 1.0,
+        van: 1.4,
+        lorry: 2.0,
+      },
+      serviceMultipliers: {
+        Standard: 1.0,
+        'Same Day': 1.3,
+        Express: 1.6,
+      },
     });
   } catch (err) {
-    console.error('Get pricing error:', err.message);
     res.status(500).json({ message: 'Error fetching pricing' });
   }
 }
 
-// Estimate relocation price
 async function estimatePrice(req, res) {
   try {
-    const { pickupAddress, destinationAddress, vehicleType, serviceType } = req.body;
-
-    if (!pickupAddress || !destinationAddress) {
-      return res.status(400).json({ message: 'Pickup and destination addresses are required' });
-    }
-
-    let distanceKm = 10;
-    const orsDistance = await getDistanceKmFromOpenRouteService(pickupAddress, destinationAddress);
-    if (orsDistance && Number.isFinite(orsDistance) && orsDistance > 0) {
-      distanceKm = orsDistance;
-    }
-
-    const price = await calculateRelocationPrice(
-      distanceKm,
-      vehicleType || 'van',
-      serviceType || 'Standard',
+    const { distanceKm, vehicleType, serviceType } = req.body;
+    const vehicleMultipliers = { bicycle: 0.6, bike: 0.8, car: 1.0, van: 1.4, lorry: 2.0 };
+    const serviceMultipliers = { Standard: 1.0, 'Same Day': 1.3, Express: 1.6 };
+    const base = 2500 + (distanceKm || 0) * 80;
+    const price = Math.round(
+      base *
+        (vehicleMultipliers[vehicleType] || 1) *
+        (serviceMultipliers[serviceType] || 1)
     );
-
-    res.json({ distanceKm, priceKes: price });
+    res.json({ price, distanceKm });
   } catch (err) {
-    console.error('Estimate price error:', err.message);
     res.status(500).json({ message: 'Error estimating price' });
   }
 }
 
-// Create relocation request (client)
+// ─── Client: Create Relocation ────────────────────────────────────────────────
+
 async function createRelocation(req, res) {
   try {
     const {
       pickupAddress,
+      pickupCoordinates,
       destinationAddress,
+      destinationCoordinates,
       scheduledDate,
       itemsDescription,
       estimatedVolume,
       vehicleType,
       serviceType,
+      price,
+      distanceKm,
       notes,
     } = req.body;
-
-    if (
-      !pickupAddress ||
-      !destinationAddress ||
-      !scheduledDate ||
-      !itemsDescription ||
-      !estimatedVolume ||
-      !vehicleType
-    ) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-
-    // Get distance
-    let distanceKm = 10;
-    const orsDistance = await getDistanceKmFromOpenRouteService(pickupAddress, destinationAddress);
-    if (orsDistance && Number.isFinite(orsDistance) && orsDistance > 0) {
-      distanceKm = orsDistance;
-    }
-
-    const price = await calculateRelocationPrice(
-      distanceKm,
-      vehicleType,
-      serviceType || 'Standard',
-    );
-
-    // Coordinates placeholders (no full geocoding implemented)
-    const pickupCoordinates = { type: 'Point', coordinates: [0, 0] };
-    const destinationCoordinates = { type: 'Point', coordinates: [0, 0] };
 
     const relocationRequest = await RelocationRequest.create({
       client: req.user.id,
       pickupAddress,
-      pickupCoordinates,
+      pickupCoordinates: pickupCoordinates || { type: 'Point', coordinates: [0, 0] },
       destinationAddress,
-      destinationCoordinates,
+      destinationCoordinates: destinationCoordinates || { type: 'Point', coordinates: [0, 0] },
       scheduledDate: new Date(scheduledDate),
       itemsDescription,
       estimatedVolume,
@@ -227,6 +80,12 @@ async function createRelocation(req, res) {
       status: 'pending',
     });
 
+    // ── Open self-dispatch window immediately (non-blocking) ──────────────────
+    // Drivers will be notified; auto-assign fires after window expires.
+    initiateSelfDispatchWindow(relocationRequest).catch((err) =>
+      console.error('[SelfDispatch] Error initiating window:', err.message)
+    );
+
     res.status(201).json(relocationRequest);
   } catch (err) {
     console.error('Create relocation request error:', err.message);
@@ -234,11 +93,15 @@ async function createRelocation(req, res) {
   }
 }
 
-// Get client's relocation requests
+// ─── Client: Get My Relocations ───────────────────────────────────────────────
+
 async function getMyRelocations(req, res) {
   try {
     const requests = await RelocationRequest.find({ client: req.user.id })
-      .populate('assignedDriver', 'user vehicleType rating isOnline')
+      .populate({
+        path: 'assignedDriver',
+        populate: { path: 'user', select: 'fullName phone' },
+      })
       .sort({ createdAt: -1 });
 
     res.json(requests);
@@ -248,26 +111,25 @@ async function getMyRelocations(req, res) {
   }
 }
 
-// Get all relocation requests (admin)
+// ─── Admin: List All Relocations ─────────────────────────────────────────────
+
 async function listRelocations(req, res) {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     const query = {};
-
-    if (status) {
-      query.status = status;
-    }
+    if (status) query.status = status;
 
     const skip = (Number(page) - 1) * Number(limit);
-
-    const requests = await RelocationRequest.find(query)
-      .populate('client', 'fullName email')
-      .populate('assignedDriver')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
-
-    const total = await RelocationRequest.countDocuments(query);
+    const [requests, total] = await Promise.all([
+      RelocationRequest.find(query)
+        .populate('client', 'fullName email phone')
+        .populate({ path: 'assignedDriver', populate: { path: 'user', select: 'fullName phone' } })
+        .populate('adminOverrideBy', 'fullName email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      RelocationRequest.countDocuments(query),
+    ]);
 
     res.json({
       requests,
@@ -284,22 +146,22 @@ async function listRelocations(req, res) {
   }
 }
 
-// Get relocation request by ID
+// ─── Shared: Get Single Relocation ───────────────────────────────────────────
+
 async function getRelocationById(req, res) {
   try {
     const request = await RelocationRequest.findById(req.params.id)
-      .populate('client', 'fullName email')
-      .populate('assignedDriver');
+      .populate('client', 'fullName email phone')
+      .populate({ path: 'assignedDriver', populate: { path: 'user', select: 'fullName phone' } })
+      .populate('adminOverrideBy', 'fullName email');
 
-    if (!request) {
-      return res.status(404).json({ message: 'Relocation request not found' });
-    }
+    if (!request) return res.status(404).json({ message: 'Relocation request not found' });
 
-    // Check authorization
     const isAdmin = req.user.role === 'admin';
     const isClient = request.client._id.toString() === req.user.id;
     const isDriver =
-      request.assignedDriver && request.assignedDriver._id.toString() === req.user.id;
+      request.assignedDriver &&
+      request.assignedDriver.user?._id?.toString() === req.user.id;
 
     if (!isAdmin && !isClient && !isDriver) {
       return res.status(403).json({ message: 'Not authorized to view this request' });
@@ -312,60 +174,109 @@ async function getRelocationById(req, res) {
   }
 }
 
-// Assign driver to relocation request (admin)
+// ─── Admin: Override Assignment (last resort, audited) ───────────────────────
+
 async function assignDriver(req, res) {
   try {
-    const { driverId } = req.body;
+    const { driverId, reason } = req.body;
+
+    if (!driverId) {
+      return res.status(400).json({ message: 'driverId is required' });
+    }
 
     const relocationRequest = await RelocationRequest.findById(req.params.id);
-
     if (!relocationRequest) {
       return res.status(404).json({ message: 'Relocation request not found' });
     }
 
-    const driver = await Driver.findById(driverId);
-    if (!driver) {
-      return res.status(404).json({ message: 'Driver not found' });
+    // ── Check if admin override is permitted ──────────────────────────────────
+    const { allowed, reason: blockReason } = await canAdminOverride(relocationRequest);
+    if (!allowed) {
+      return res.status(403).json({
+        message: blockReason,
+        hint: 'Allow the self-dispatch window to expire, or wait until the move is within 4 hours.',
+      });
     }
 
-    relocationRequest.assignedDriver = driverId;
-    relocationRequest.status = 'assigned';
-    await relocationRequest.save();
+    // ── Validate driver is eligible ───────────────────────────────────────────
+    const driver = await Driver.findById(driverId).populate('user', 'fullName');
+    if (!driver) return res.status(404).json({ message: 'Driver not found' });
 
-    res.json(relocationRequest);
+    if (!driver.isOnline) {
+      return res.status(400).json({
+        message: `Driver ${driver.user?.fullName || driverId} is currently offline. Please choose an online driver.`,
+      });
+    }
+
+    if (driver.vehicleType !== relocationRequest.vehicleType) {
+      return res.status(400).json({
+        message: `This relocation requires a ${relocationRequest.vehicleType}, but this driver has a ${driver.vehicleType}.`,
+      });
+    }
+
+    // ── Perform assignment with full audit record ─────────────────────────────
+    const updated = await RelocationRequest.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending' }, // atomic: only if still pending
+      {
+        $set: {
+          assignedDriver: driverId,
+          status: 'assigned',
+          assignmentMethod: 'admin-override',
+          assignedAt: new Date(),
+          adminOverrideBy: req.user.id,
+          adminOverrideReason: reason || 'No reason provided',
+        },
+      },
+      { new: true }
+    )
+      .populate('client', 'fullName email phone')
+      .populate({ path: 'assignedDriver', populate: { path: 'user', select: 'fullName phone' } });
+
+    if (!updated) {
+      return res.status(409).json({
+        message: 'This relocation was just assigned by a driver. Refresh and check again.',
+      });
+    }
+
+    console.log(
+      `[AdminOverride] Admin ${req.user.id} assigned driver ${driverId} ` +
+      `to relocation ${req.params.id}. Reason: "${reason || 'none'}"`
+    );
+
+    res.json(updated);
   } catch (err) {
     console.error('Assign driver error:', err.message);
     res.status(500).json({ message: 'Error assigning driver' });
   }
 }
 
-// Update relocation request status
+// ─── Admin/Driver: Update Status ──────────────────────────────────────────────
+
 async function updateStatus(req, res) {
   try {
     const { status } = req.body;
+    const allowed = ['assigned', 'in-transit', 'completed', 'cancelled'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: `Invalid status. Must be one of: ${allowed.join(', ')}` });
+    }
 
     const relocationRequest = await RelocationRequest.findById(req.params.id);
-
-    if (!relocationRequest) {
-      return res.status(404).json({ message: 'Relocation request not found' });
-    }
+    if (!relocationRequest) return res.status(404).json({ message: 'Relocation request not found' });
 
     // Drivers can only update their own assigned requests
     if (req.user.role === 'driver') {
-      if (!relocationRequest.assignedDriver) {
-        return res.status(403).json({ message: 'No driver assigned to this request' });
-      }
       const driver = await Driver.findOne({ user: req.user.id });
-      if (!driver || driver._id.toString() !== relocationRequest.assignedDriver.toString()) {
+      if (
+        !driver ||
+        !relocationRequest.assignedDriver ||
+        driver._id.toString() !== relocationRequest.assignedDriver.toString()
+      ) {
         return res.status(403).json({ message: 'Not authorized to update this request' });
       }
     }
 
     relocationRequest.status = status;
-    if (status === 'completed') {
-      relocationRequest.completedAt = new Date();
-    }
-
+    if (status === 'completed') relocationRequest.completedAt = new Date();
     await relocationRequest.save();
 
     res.json(relocationRequest);
@@ -375,24 +286,19 @@ async function updateStatus(req, res) {
   }
 }
 
-// Cancel relocation request (client or admin)
+// ─── Client/Admin: Cancel ─────────────────────────────────────────────────────
+
 async function cancelRelocation(req, res) {
   try {
     const relocationRequest = await RelocationRequest.findById(req.params.id);
+    if (!relocationRequest) return res.status(404).json({ message: 'Relocation request not found' });
 
-    if (!relocationRequest) {
-      return res.status(404).json({ message: 'Relocation request not found' });
-    }
-
-    // Only client who created it or admin can cancel
     if (req.user.role === 'client' && relocationRequest.client.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to cancel this request' });
     }
 
-    if (relocationRequest.status === 'in-transit' || relocationRequest.status === 'completed') {
-      return res
-        .status(400)
-        .json({ message: 'Cannot cancel a request that is in transit or completed' });
+    if (['in-transit', 'completed'].includes(relocationRequest.status)) {
+      return res.status(400).json({ message: 'Cannot cancel a request that is in transit or completed' });
     }
 
     relocationRequest.status = 'cancelled';
@@ -402,6 +308,37 @@ async function cancelRelocation(req, res) {
   } catch (err) {
     console.error('Cancel relocation request error:', err.message);
     res.status(500).json({ message: 'Error cancelling relocation request' });
+  }
+}
+
+// ─── Admin: Audit Log for a Relocation ───────────────────────────────────────
+
+async function getRelocationAudit(req, res) {
+  try {
+    const relocation = await RelocationRequest.findById(req.params.id)
+      .populate('adminOverrideBy', 'fullName email')
+      .populate('notifiedDrivers.driver', 'vehicleType')
+      .populate({
+        path: 'notifiedDrivers.driver',
+        populate: { path: 'user', select: 'fullName' },
+      });
+
+    if (!relocation) return res.status(404).json({ message: 'Relocation not found' });
+
+    res.json({
+      id: relocation._id,
+      assignmentMethod: relocation.assignmentMethod,
+      assignedAt: relocation.assignedAt,
+      selfDispatchWindowMs: relocation.selfDispatchWindowMs,
+      selfDispatchExpiredAt: relocation.selfDispatchExpiredAt,
+      autoAssignScore: relocation.autoAssignScore,
+      adminOverrideBy: relocation.adminOverrideBy,
+      adminOverrideReason: relocation.adminOverrideReason,
+      notifiedDrivers: relocation.notifiedDrivers,
+    });
+  } catch (err) {
+    console.error('Relocation audit error:', err.message);
+    res.status(500).json({ message: 'Error fetching audit log' });
   }
 }
 
@@ -415,5 +352,5 @@ module.exports = {
   assignDriver,
   updateStatus,
   cancelRelocation,
+  getRelocationAudit,
 };
-

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createOrder } from '../../api';
 import RadioCard from '../../components/client/RadioCard';
 import SuccessCard from '../../components/client/SucccessCard';
+import GeoAddressInput from '../../components/common/GeoAddressInput';
 
 const Delivery = ({ isActive, onShowPage }) => {
   const [formData, setFormData] = useState({
@@ -84,24 +85,20 @@ const Delivery = ({ isActive, onShowPage }) => {
             )}
 
             <div className="field-group">
-              <div className="field">
-                <label>Pickup Address</label>
-                <input
-                  type="text"
-                  placeholder="Full pickup address"
-                  value={formData.pickupAddress}
-                  onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>Dropoff Address</label>
-                <input
-                  type="text"
-                  placeholder="Full delivery address"
-                  value={formData.dropoffAddress}
-                  onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
-                />
-              </div>
+              {/* Geo-coded address inputs */}
+              <GeoAddressInput
+                label="Pickup Address"
+                placeholder="Start typing or tap 📍 for your location"
+                value={formData.pickupAddress}
+                onChange={(v) => setFormData({ ...formData, pickupAddress: v })}
+              />
+              <GeoAddressInput
+                label="Dropoff Address"
+                placeholder="Start typing or tap 📍 for your location"
+                value={formData.dropoffAddress}
+                onChange={(v) => setFormData({ ...formData, dropoffAddress: v })}
+              />
+
               <div className="field-row">
                 <div className="field">
                   <label>Recipient Name</label>
@@ -122,70 +119,42 @@ const Delivery = ({ isActive, onShowPage }) => {
                   />
                 </div>
               </div>
+
               <div className="field">
                 <label>Package Weight (kg)</label>
                 <input
                   type="number"
-                  placeholder="e.g. 5"
-                  min="0.1"
+                  placeholder="e.g. 2.5"
                   value={formData.packageWeightKg}
                   onChange={(e) => setFormData({ ...formData, packageWeightKg: e.target.value })}
                 />
               </div>
+
               <div className="field">
                 <label>Vehicle Type</label>
                 <div className="radio-grid">
-                  <RadioCard
-                    icon="🚲"
-                    label="Bicycle"
-                    sublabel="Up to 5kg"
-                    selected={formData.vehicleType === 'bicycle'}
-                    onClick={() => setFormData({ ...formData, vehicleType: 'bicycle' })}
-                  />
-                  <RadioCard
-                    icon="🏍️"
-                    label="Motorbike"
-                    sublabel="Up to 20kg"
-                    selected={formData.vehicleType === 'bike'}
-                    onClick={() => setFormData({ ...formData, vehicleType: 'bike' })}
-                  />
-                  <RadioCard
-                    icon="🚗"
-                    label="Car"
-                    sublabel="Up to 50kg"
-                    selected={formData.vehicleType === 'car'}
-                    onClick={() => setFormData({ ...formData, vehicleType: 'car' })}
-                  />
-                  <RadioCard
-                    icon="🚐"
-                    label="Van"
-                    sublabel="Up to 200kg"
-                    selected={formData.vehicleType === 'van'}
-                    onClick={() => setFormData({ ...formData, vehicleType: 'van' })}
-                  />
+                  {[
+                    { value: 'bike', icon: '🏍️', label: 'Motorbike', sublabel: 'Up to 10kg' },
+                    { value: 'car', icon: '🚗', label: 'Car', sublabel: 'Up to 50kg' },
+                    { value: 'van', icon: '🚐', label: 'Van', sublabel: 'Up to 300kg' },
+                  ].map(v => (
+                    <RadioCard
+                      key={v.value}
+                      icon={v.icon}
+                      label={v.label}
+                      sublabel={v.sublabel}
+                      selected={formData.vehicleType === v.value}
+                      onClick={() => setFormData({ ...formData, vehicleType: v.value })}
+                    />
+                  ))}
                 </div>
               </div>
+
               <div className="field">
                 <label>Service Type</label>
-                <div className="radio-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
-                  <RadioCard
-                    label="Standard"
-                    sublabel="24–48 hrs"
-                    selected={formData.serviceType === 'Standard'}
-                    onClick={() => setFormData({ ...formData, serviceType: 'Standard' })}
-                  />
-                  <RadioCard
-                    label="Same Day"
-                    sublabel="+30%"
-                    selected={formData.serviceType === 'Same Day'}
-                    onClick={() => setFormData({ ...formData, serviceType: 'Same Day' })}
-                  />
-                  <RadioCard
-                    label="Express"
-                    sublabel="+50%"
-                    selected={formData.serviceType === 'Express'}
-                    onClick={() => setFormData({ ...formData, serviceType: 'Express' })}
-                  />
+                <div className="radio-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                  <RadioCard icon="⚡" label="Express" sublabel="Same day" selected={formData.serviceType === 'Express'} onClick={() => setFormData({ ...formData, serviceType: 'Express' })} />
+                  <RadioCard icon="📦" label="Standard" sublabel="1–2 days" selected={formData.serviceType === 'Standard'} onClick={() => setFormData({ ...formData, serviceType: 'Standard' })} />
                 </div>
               </div>
             </div>
@@ -193,15 +162,15 @@ const Delivery = ({ isActive, onShowPage }) => {
             <div className="form-actions">
               <button className="btn btn-outline" onClick={handleBack}>← Back</button>
               <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? 'Sending...' : 'Request Delivery →'}
+                {submitting ? 'Placing Order…' : 'Place Order →'}
               </button>
             </div>
           </div>
         ) : (
           <SuccessCard
             icon="📦"
-            title="Delivery Order Created!"
-            message={`Your delivery from "${successData.pickupAddress}" to "${successData.dropoffAddress}" has been placed. Estimated cost: KES ${successData.priceKes?.toLocaleString() || '—'}. A driver will be assigned shortly.`}
+            title="Delivery Order Placed!"
+            message={`Your package from ${formData.pickupAddress} to ${formData.dropoffAddress} has been booked. Estimated cost: KES ${successData.priceKes?.toLocaleString() || '—'}.`}
             trackingCode={successData._id}
             onBack={handleBackToServices}
           />
