@@ -18,6 +18,9 @@ const NAIROBI = [-1.2921, 36.8219];
 const LiveDriversMap = () => {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
+  const [mapInstance, setMapInstance] = useState(null);
 
   const fetchDrivers = async () => {
     try {
@@ -25,6 +28,7 @@ const LiveDriversMap = () => {
       setDrivers(Array.isArray(data) ? data.filter(d => d.coordinates?.[0] && d.coordinates?.[1]) : []);
     } catch {
       // silently fail — map still renders without markers
+      setDrivers([]);
     } finally {
       setLoading(false);
     }
@@ -35,6 +39,51 @@ const LiveDriversMap = () => {
     const interval = setInterval(fetchDrivers, 15000); // refresh every 15s
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation not supported');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        setLocationError(err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 },
+    );
+  }, []);
+
+  // Fit map to show both user and drivers when updated
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    const points = [];
+    if (userLocation) points.push([userLocation.lat, userLocation.lng]);
+    drivers.forEach((d) => {
+      const [lng, lat] = d.coordinates;
+      points.push([lat, lng]);
+    });
+
+    if (points.length === 0) return;
+
+    try {
+      const bounds = L.latLngBounds(points);
+      mapInstance.fitBounds(bounds, { padding: [50, 50] });
+    } catch {
+      // ignore
+    }
+  }, [mapInstance, userLocation, drivers]);
+
+  const userIcon = new L.DivIcon({
+    html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));">📍</div>',
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+  });
 
   return (
     <div className="map-card" style={{ marginBottom: 24 }}>
@@ -49,11 +98,22 @@ const LiveDriversMap = () => {
         <span style={{ fontSize: '.75rem', color: '#94a3b8' }}>Updates every 15s</span>
       </div>
       <div className="map-body" style={{ height: 280 }}>
-        <MapContainer center={NAIROBI} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
+        <MapContainer
+          center={userLocation ? [userLocation.lat, userLocation.lng] : NAIROBI}
+          zoom={12}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={false}
+          whenCreated={setMapInstance}
+        >
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          {userLocation && (
+            <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
+              <Popup>You are here</Popup>
+            </Marker>
+          )}
           {drivers.map((d) => {
             const [lng, lat] = d.coordinates;
             return (
@@ -72,6 +132,16 @@ const LiveDriversMap = () => {
           })}
         </MapContainer>
       </div>
+      {locationError && (
+        <div style={{ padding: '0.75rem', color: '#b91c1c', fontSize: '0.85rem' }}>
+          {locationError}
+        </div>
+      )}
+      {!loading && drivers.length === 0 && (
+        <div style={{ padding: '0.75rem', color: '#475569', fontSize: '0.85rem' }}>
+          No drivers are currently online in your area.
+        </div>
+      )}
     </div>
   );
 };

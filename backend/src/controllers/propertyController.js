@@ -14,7 +14,8 @@ async function listProperties(req, res) {
       limit = 20,
     } = req.query;
 
-    const query = { status: 'active' };
+    // Show properties that are approved/active for clients
+    const query = { status: { $in: ['active', 'approved'] } };
 
     if (storageType) {
       query.storageType = storageType;

@@ -10,6 +10,7 @@ import UsersPage from '../../components/admin/UsersPage';
 import TripsPage from '../../components/admin/TripsPage';
 import OrdersPage from '../../components/admin/OrdersPage';
 import PropertiesPage from '../../components/admin/PropertiesPage';
+import RelocationsPage from '../../components/admin/RelocationsPage';
 import AlertsPage from '../../components/admin/AlertsPage';
 import SettingsPage from '../../components/admin/SettingsPage';
 import ProfilePage from '../../components/admin/ProfilePage';
@@ -29,8 +30,10 @@ import {
   getAdminOrders,
   getAdminProperties,
   getAdminDrivers,
+  getAdminRelocations,
   assignOrder,
   updateAdminOrderStatus,
+  updatePropertyStatusAdmin,
   getMe,
   updateMe
 } from '../../api';
@@ -45,6 +48,8 @@ export default function AdminLayout() {
   const [orders, setOrders] = useState([]);   // ← full orders list for Orders page
   const [drivers, setDrivers] = useState([]); // ← for driver assignment dropdown
   const [props, setProps] = useState([]);
+  const [relocations, setRelocations] = useState([]);
+  const [relocSearch, setRelocSearch] = useState('');
   const [page, setPage] = useState('overview');
 
   const pageLabels = {
@@ -53,6 +58,7 @@ export default function AdminLayout() {
     trips: 'Trips',
     orders: 'Orders',
     properties: 'Properties',
+    relocations: 'Relocation Requests',
     driversmap: 'Drivers Map',
     alerts: 'Alerts',
     settings: 'Settings',
@@ -176,15 +182,27 @@ export default function AdminLayout() {
       // Properties
       const propsData = await getAdminProperties();
       const transformedProps = (propsData.data || []).map(prop => ({
-        id: prop._id,
-        name: prop.name || '',
-        owner: prop.landlord?.fullName || 'Unknown',
-        units: prop.totalUnits || 0,
-        occupied: prop.occupiedUnits || 0,
-        revenue: prop.monthlyRevenue || 0,
-        status: prop.status || 'active'
+        id:           prop._id,
+        name:         prop.title || prop.name || '',
+        title:        prop.title || '',
+        address:      prop.address || '',
+        owner:        prop.landlord?.fullName || 'Unknown',
+        storageType:  prop.storageType || '',
+        sizeSqFt:     prop.sizeSqFt || 0,
+        pricePerMonth:prop.pricePerMonth || 0,
+        units:        prop.totalUnits || 0,
+        occupied:     prop.occupiedUnits || 0,
+        revenue:      prop.monthlyRevenue || 0,
+        status:       prop.status || 'pending',
+        isVerified:   prop.isVerified || false,
       }));
       setProps(transformedProps);
+
+      // Relocations
+      try {
+        const relocData = await getAdminRelocations();
+        setRelocations(relocData.data || relocData.requests || []);
+      } catch (_) { /* non-fatal */ }
 
       // Drivers (for order assignment)
       try {
@@ -249,6 +267,40 @@ export default function AdminLayout() {
       setPanel(p => ({ ...p, data: { ...p.data, status } }));
     } catch (err) {
       toast(err.message || 'Failed to update status', 'error');
+    }
+  };
+
+  const handleVerifyProperty = async (propertyId, newStatus) => {
+    try {
+      await updatePropertyStatusAdmin(propertyId, newStatus);
+      toast(
+        newStatus === 'approved'
+          ? '✅ Property approved — now visible to clients'
+          : newStatus === 'rejected'
+          ? '❌ Property rejected'
+          : '🔄 Property set to pending',
+        newStatus === 'rejected' ? 'error' : 'success'
+      );
+      // Refresh props list
+      const propsData = await getAdminProperties();
+      const transformed = (propsData.data || []).map(prop => ({
+        id:           prop._id,
+        name:         prop.title || prop.name || '',
+        title:        prop.title || '',
+        address:      prop.address || '',
+        owner:        prop.landlord?.fullName || 'Unknown',
+        storageType:  prop.storageType || '',
+        sizeSqFt:     prop.sizeSqFt || 0,
+        pricePerMonth:prop.pricePerMonth || 0,
+        units:        prop.totalUnits || 0,
+        occupied:     prop.occupiedUnits || 0,
+        revenue:      prop.monthlyRevenue || 0,
+        status:       prop.status || 'pending',
+        isVerified:   prop.isVerified || false,
+      }));
+      setProps(transformed);
+    } catch (err) {
+      toast(err.message || 'Error updating property status', 'error');
     }
   };
 
@@ -321,6 +373,7 @@ export default function AdminLayout() {
   const activeUsers = users.filter(u => u.status === 'active').length;
   const pendingUsers = users.filter(u => u.status === 'pending').length;
   const activeTrips = trips.filter(t => t.status === 'active').length;
+  const pendingRelocations = relocations.filter(r => r.status === 'pending').length;
 
   const ALERTS = [
     { type: 'critical', icon: '🚨', title: 'System check required', desc: 'Some deliveries pending assignment.', time: '1h ago' },
@@ -348,6 +401,7 @@ export default function AdminLayout() {
         setLogoutModal={setLogoutModal}
         pendingUsers={pendingUsers}
         activeTrips={activeTrips}
+        pendingRelocations={pendingRelocations}
         criticalAlerts={ALERTS.filter(a => a.type === 'critical').length}
       />
 
@@ -412,6 +466,14 @@ export default function AdminLayout() {
             propSearch={propSearch}
             setPropSearch={setPropSearch}
             setPanel={setPanel}
+            onVerifyProperty={handleVerifyProperty}
+          />
+
+          <RelocationsPage
+            active={page === 'relocations'}
+            relocations={relocations}
+            relocSearch={relocSearch}
+            setRelocSearch={setRelocSearch}
           />
 
           <DriversMapPage active={page === 'driversmap'} />

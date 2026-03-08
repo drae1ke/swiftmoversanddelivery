@@ -1,28 +1,28 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export function getAuthToken() {
-  return localStorage.getItem('token');
+  return sessionStorage.getItem('token');
 }
 
 export function setAuthToken(token) {
   if (token) {
-    localStorage.setItem('token', token);
+    sessionStorage.setItem('token', token);
   } else {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
   }
 }
 
 export function setCurrentUser(user) {
   if (user) {
-    localStorage.setItem('user', JSON.stringify(user));
+    sessionStorage.setItem('user', JSON.stringify(user));
   } else {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
   }
 }
 
 export function getCurrentUser() {
   try {
-    const raw = localStorage.getItem('user');
+    const raw = sessionStorage.getItem('user');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;

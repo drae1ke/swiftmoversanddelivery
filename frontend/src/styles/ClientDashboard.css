@@ -756,6 +756,8 @@ a { text-decoration: none; color: inherit; }
 .storage-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 
 .storage-card {
+  display: flex;
+  flex-direction: column;
   background: var(--white);
   border-radius: var(--r-lg);
   border: 1px solid var(--border);
@@ -772,6 +774,12 @@ a { text-decoration: none; color: inherit; }
   justify-content: center;
   font-size: 2.2rem;
   position: relative;
+  z-index: 0;
+}
+
+.storage-card-body {
+  position: relative;
+  z-index: 1;
 }
 
 .storage-card-badge {
@@ -795,17 +803,21 @@ a { text-decoration: none; color: inherit; }
 .storage-card-name {
   font-family: var(--font-d);
   font-size: 0.95rem;
-  color: var(--black);
+  color: var(--off);
   margin-bottom: 3px;
 }
 
 .storage-card-loc {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--off);
   margin-bottom: 11px;
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.sc-detail {
+  color:var(--off)
 }
 
 .storage-card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 13px; }
@@ -822,8 +834,8 @@ a { text-decoration: none; color: inherit; }
 
 .storage-card-footer { display: flex; align-items: center; justify-content: space-between; }
 
-.storage-price { font-family: var(--font-d); font-size: 1.05rem; color: var(--black); }
-.storage-price span { font-size: 0.72rem; color: var(--muted); font-family: var(--font-b); font-weight: 400; }
+.storage-price { font-family: var(--font-d); font-size: 1.05rem; color: var(--off); }
+.storage-price span { font-size: 0.72rem; color: var(--off); font-family: var(--font-b); font-weight: 400; }
 
 .storage-book-btn {
   background: var(--red);

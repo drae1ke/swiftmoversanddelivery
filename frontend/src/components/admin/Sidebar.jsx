@@ -1,11 +1,11 @@
 import React from 'react';
 import {
-  FaChartPie, FaUsers, FaTruck, FaBuilding,
+  FaChartPie, FaUsers, FaTruck, FaTruckMoving, FaBuilding,
   FaExclamationTriangle, FaCog, FaUser, FaSignOutAlt,
   FaMapMarkedAlt, FaBoxOpen
 } from 'react-icons/fa';
 
-export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, pendingUsers, activeTrips, criticalAlerts }) {
+export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, pendingUsers, activeTrips, criticalAlerts, pendingRelocations }) {
   const navItems = [
     { section: 'Management' },
     { id: 'overview', icon: FaChartPie, label: 'Overview' },
@@ -13,6 +13,7 @@ export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, p
     { id: 'orders', icon: FaBoxOpen, label: 'Orders' },       // ← new
     { id: 'trips', icon: FaTruck, label: 'Trips' },
     { id: 'properties', icon: FaBuilding, label: 'Properties' },
+    { id: 'relocations', icon: FaTruckMoving, label: 'Relocations' },
     { id: 'driversmap', icon: FaMapMarkedAlt, label: 'Drivers Map' },
     { section: 'System' },
     { id: 'alerts', icon: FaExclamationTriangle, label: 'Alerts' },
@@ -24,6 +25,7 @@ export default function Sidebar({ page, setPage, adminProfile, setLogoutModal, p
   const getBadge = (id) => {
     if (id === 'users' && pendingUsers > 0) return { count: pendingUsers, color: 'amber' };
     if (id === 'trips' && activeTrips > 0) return { count: activeTrips, color: 'green' };
+    if (id === 'relocations' && pendingRelocations > 0) return { count: pendingRelocations, color: 'amber' };
     if (id === 'alerts' && criticalAlerts > 0) return { count: criticalAlerts, color: 'red' };
     return null;
   };
