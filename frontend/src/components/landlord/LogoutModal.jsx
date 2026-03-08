@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaSignOutAlt, FaTimes, FaCheck } from 'react-icons/fa';
 
-export default function LogoutModal({ logoutMod, setLogoutMod, toast }) {
+export default function LogoutModal({ logoutMod, setLogoutMod, onConfirm }) {
   return (
     <div className={`op-mo ${logoutMod ? 'open' : ''}`} onClick={e => e.target === e.currentTarget && setLogoutMod(false)}>
       <div className="op-modal-sm">
@@ -12,7 +12,10 @@ export default function LogoutModal({ logoutMod, setLogoutMod, toast }) {
           <button className="op-btn op-btn-outline" onClick={() => setLogoutMod(false)}>
             <FaTimes /> Cancel
           </button>
-          <button className="op-btn op-btn-primary" onClick={() => { setLogoutMod(false); toast('Logged out'); }}>
+          <button className="op-btn op-btn-primary" onClick={() => {
+            setLogoutMod(false);
+            onConfirm?.();
+          }}>
             <FaCheck /> Log Out
           </button>
         </div>

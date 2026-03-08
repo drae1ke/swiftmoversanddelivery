@@ -631,6 +631,14 @@
   cursor: pointer;
 }
 
+.ap-table--no-hover tbody tr {
+  cursor: default;
+}
+
+.ap-table--no-hover tbody tr:hover {
+  background: transparent;
+}
+
 .ap-table tbody tr:hover {
   background: var(--off);
 }
@@ -654,6 +662,47 @@
   display: flex;
   gap: 5px;
   justify-content: flex-end;
+}
+
+.ap-td-muted {
+  font-size: .84rem;
+  color: var(--muted);
+}
+
+.ap-td-numeric {
+  font-family: var(--font-d);
+  font-size: .95rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ap-occupancy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ap-occupancy-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--border-l);
+  position: relative;
+}
+
+.ap-occupancy-label {
+  font-size: .75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 40px;
+  text-align: right;
+}
+
+.ap-empty {
+  padding: 26px;
+  text-align: center;
+  color: var(--muted);
+  font-size: .92rem;
 }
 
 .ap-user-av {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/ClientDashboard.css';
 import { getMe } from '../../api';
+import { useAuth } from '../../context/AuthContext';
 import Sidebar from '../../components/client/Sidebar';
 import Topbar from '../../components/client/Topbar';
 import Services from './Services';
@@ -19,6 +21,9 @@ function  MainClient () {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [currentDate, setCurrentDate] = useState('');
   const [userName, setUserName] = useState('');
+
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   useEffect(() => {
     const d = new Date();
@@ -53,10 +58,10 @@ function  MainClient () {
     setShowLogoutModal(true);
   };
 
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
     setShowLogoutModal(false);
-    // In a real app: clear session, redirect to login
-    alert('Logged out successfully');
+    await logout();
+    navigate('/Login');
   };
 
   const closeLogout = () => {

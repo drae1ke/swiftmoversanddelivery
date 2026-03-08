@@ -1,5 +1,5 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
-import { getAuthToken, setAuthToken, getCurrentUser, setCurrentUser, getUserRole } from '../api';
+import { getAuthToken, setAuthToken, getCurrentUser, setCurrentUser, getUserRole, logout as apiLogout } from '../api';
 
 /**
  * AuthContext - Provides authentication state and methods to the entire app
@@ -34,7 +34,14 @@ export const AuthProvider = ({ children }) => {
     setUserRole(userData.role);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await apiLogout();
+    } catch (err) {
+      // logout should still proceed even if backend call fails
+      console.warn('Logout API call failed:', err?.message || err);
+    }
+
     setAuthToken(null);
     setCurrentUser(null);
     setIsAuthenticated(false);

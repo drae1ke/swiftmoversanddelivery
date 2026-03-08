@@ -113,6 +113,10 @@ export async function resetPassword(token, newPassword) {
   });
 }
 
+export async function logout() {
+  return apiRequest('/api/auth/logout', { method: 'POST' });
+}
+
 // ============= ORDER API =============
 export async function createOrder(orderData) {
   return apiRequest('/api/orders', {

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from 'react-router-dom';
 import '../../styles/DriverDashboard.css';
 import { useLocalToast } from '../../components/common/useLocalToast';
+import { useAuth } from '../../context/AuthContext';
 import {
   getDriverDashboard,
   getDriverProfile,
@@ -35,6 +37,15 @@ export default function DriverLayout() {
   const [docs, setDocs] = useState([]);
   const [page, setPage] = useState('overview');
   const { toasts, toast } = useLocalToast();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    toast('Logged out');
+    navigate('/Login');
+  };
+
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('idle');
@@ -320,7 +331,7 @@ export default function DriverLayout() {
       </div>
 
       <TripPanel panel={panel} setPanel={setPanel} trips={trips} updateTripStatus={updateTripStatus} handleAcceptOrder={handleAcceptOrder} />
-      <LogoutModal logoutModal={logoutModal} setLogoutModal={setLogoutModal} toast={toast} />
+      <LogoutModal logoutModal={logoutModal} setLogoutModal={setLogoutModal} onConfirm={handleLogout} />
       <Toast toasts={toasts} />
     </div>
   );

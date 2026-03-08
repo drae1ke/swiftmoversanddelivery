@@ -126,7 +126,7 @@ async function forgotPassword(req, res) {
 
     // Always respond 200 to avoid leaking which emails exist
     if (!user) {
-      return res.json({ message: 'If that email exists, a reset link will be sent shortly' });
+      return res.json({ message: 'A reset link will be sent shortly to your email shortly' });
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -261,6 +261,11 @@ async function updateMe(req, res) {
     res.status(500).json({ message: 'Error updating profile' });
   }
 }
+async function logout(req, res) {
+  // For JWT-based auth, we don't need to invalidate tokens on the server unless using a blacklist.
+  // This endpoint exists so the frontend can call a dedicated logout route if desired.
+  res.json({ message: 'Logged out' });
+}
 
 module.exports = {
   signup,
@@ -270,5 +275,6 @@ module.exports = {
   resetPassword,
   getMe,
   updateMe,
+  logout,
 };
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaBell } from 'react-icons/fa';
 
-export default function Topbar({ page, pageLabels }) {
+export default function Topbar({ page, pageLabels, pageLabel }) {
   const formatDate = () => {
     const date = new Date();
     return date.toLocaleDateString('en-KE', {
@@ -12,9 +12,11 @@ export default function Topbar({ page, pageLabels }) {
     });
   };
 
+  const title = pageLabel || pageLabels?.[page] || page;
+
   return (
     <header className="op-topbar">
-      <span className="op-topbar-title">{pageLabels[page]}</span>
+      <span className="op-topbar-title">{title}</span>
       <span className="op-topbar-sub">{formatDate()}</span>
       <button className="op-notif">
         <FaBell size={16} />

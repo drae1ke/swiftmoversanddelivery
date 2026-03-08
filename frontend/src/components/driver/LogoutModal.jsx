@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaSignOutAlt, FaTimes, FaCheck } from 'react-icons/fa';
 
-export default function LogoutModal({ logoutModal, setLogoutModal, toast }) {
+export default function LogoutModal({ logoutModal, setLogoutModal, onConfirm }) {
   return (
     <div className={`dp-mo ${logoutModal ? 'open' : ''}`} onClick={e => e.target === e.currentTarget && setLogoutModal(false)}>
       <div className="dp-modal">
@@ -14,7 +14,7 @@ export default function LogoutModal({ logoutModal, setLogoutModal, toast }) {
           </button>
           <button className="dp-btn dp-btn-primary" onClick={() => {
             setLogoutModal(false);
-            toast('Logged out');
+            onConfirm?.();
           }}>
             <FaCheck /> Log Out
           </button>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaSignOutAlt } from 'react-icons/fa';
 
-export default function LogoutModal({ logoutModal, setLogoutModal, toast }) {
+export default function LogoutModal({ logoutModal, setLogoutModal, onConfirm }) {
   return (
     <div className={`ap-mo ${logoutModal ? 'open' : ''}`} onClick={e => e.target === e.currentTarget && setLogoutModal(false)}>
       <div className="ap-modal-sm">
@@ -14,7 +14,7 @@ export default function LogoutModal({ logoutModal, setLogoutModal, toast }) {
           </button>
           <button className="ap-btn ap-btn-primary" onClick={() => {
             setLogoutModal(false);
-            toast('Logged out');
+            onConfirm?.();
           }}>
             Log Out
           </button>

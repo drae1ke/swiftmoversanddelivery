@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import '../../styles/AdminDashboard.css';
 
 // Components
@@ -36,6 +37,7 @@ import {
 
 // Utils
 import { nid } from '../../utils/utils';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLayout() {
   const [users, setUsers] = useState([]);
@@ -58,6 +60,15 @@ export default function AdminLayout() {
   };
 
   const [toasts, setToasts] = useState([]);
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    toast('Logged out');
+    navigate('/Login');
+  };
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -477,7 +488,7 @@ export default function AdminLayout() {
       <LogoutModal
         logoutModal={logoutModal}
         setLogoutModal={setLogoutModal}
-        toast={toast}
+        onConfirm={handleLogout}
       />
 
       <Toast toasts={toasts} />
