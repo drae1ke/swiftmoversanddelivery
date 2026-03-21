@@ -288,6 +288,10 @@ export async function getClientProfile() {
   return apiRequest('/api/auth/me');
 }
 
+export async function getClientDriverLocations() {
+  return apiRequest('/api/client/driver-locations');
+}
+
 export async function updateClientProfile(profileData) {
   return apiRequest('/api/client/profile', {
     method: 'PATCH',

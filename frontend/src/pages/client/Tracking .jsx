@@ -1,55 +1,6 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import OrderTrackingMap from '../../components/client/OrderTrackingMap';
+import CombinedTrackingMap from '../../components/client/CombinedTrackingMap';
 import { trackOrder, getMyOrders } from '../../api';
-
-// Fix Leaflet default icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
-
-// Custom truck icon
-const truckIcon = new L.DivIcon({
-  html: '<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">🚛</div>',
-  className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-
-// A small live map that shows driver's current GPS position
-const DriverLiveMap = ({ driverLocation, pickupAddress, dropoffAddress }) => {
-  if (!driverLocation) return null;
-  const { lat, lng } = driverLocation;
-  return (
-    <div className="map-card" style={{ marginBottom: 16 }}>
-      <div className="map-header">
-        <div className="map-header-left">
-          <span className="map-title">Driver Live Location</span>
-          <span className="map-live-dot">
-            <span className="map-live-pulse" />
-            Live
-          </span>
-        </div>
-      </div>
-      <div className="map-body" style={{ height: 240 }}>
-        <MapContainer center={[lat, lng]} zoom={14} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
-          <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker position={[lat, lng]} icon={truckIcon}>
-            <Popup>🚛 Driver is here</Popup>
-          </Marker>
-        </MapContainer>
-      </div>
-    </div>
-  );
-};
 
 const Tracking = ({ isActive, onShowPage }) => {
   const [trackingCode, setTrackingCode] = useState('');
@@ -240,19 +191,13 @@ const Tracking = ({ isActive, onShowPage }) => {
             </div>
           </div>
 
-          {/* Live driver location map (when driver has GPS coordinates) */}
-          {trackingData.driver?.location && (
-            <DriverLiveMap
-              driverLocation={trackingData.driver.location}
-              pickupAddress={trackingData.rawPickup}
-              dropoffAddress={trackingData.rawDropoff}
-            />
-          )}
-
-          {/* Route map (OpenRouteService) */}
-          <OrderTrackingMap
-            fromLabel={trackingData.rawPickup}
-            toLabel={trackingData.rawDropoff}
+          {/* Combined driver live location + delivery route map */}
+          <CombinedTrackingMap
+            driverLocation={trackingData.driver?.location || null}
+            pickupAddress={trackingData.rawPickup}
+            dropoffAddress={trackingData.rawDropoff}
+            driverName={trackingData.driver?.name}
+            orderId={trackingCode}
           />
 
           {/* Two columns: timeline + info */}

@@ -1,7 +1,7 @@
 const Order = require('../models/Order');
 const Driver = require('../models/Driver');
 const RelocationRequest = require('../models/RelocationRequest');
-const { sendOrderArrivalEmail } = require('../services/emailService');
+const { sendOrderArrivalEmail, sendDriverAcceptedEmail } = require('../services/emailService');
 
 // Driver dashboard summary
 async function getDashboard(req, res) {
@@ -358,6 +358,28 @@ async function acceptOrder(req, res) {
     const populated = await Order.findById(order._id)
       .populate('client', 'fullName email phone')
       .populate({ path: 'driver', populate: { path: 'user', select: 'fullName email phone' } });
+
+    // ── Send email to recipient (if recipientEmail is set) ──────────────────
+    if (populated.recipientEmail) {
+      sendDriverAcceptedEmail({
+        to:            populated.recipientEmail,
+        recipientName: populated.recipientName || 'there',
+        clientName:    populated.client?.fullName || 'A customer',
+        order:         populated,
+        driver:        populated.driver,
+      }).catch((err) => console.error('Recipient email error:', err.message));
+    }
+
+    // ── Also send updated assigned email to the client ──────────────────────
+    if (populated.client?.email) {
+      const { sendOrderAssignedEmail } = require('../services/emailService');
+      sendOrderAssignedEmail({
+        to:         populated.client.email,
+        clientName: populated.client.fullName,
+        order:      populated,
+        driverName: populated.driver?.user?.fullName || 'Your driver',
+      }).catch((err) => console.error('Client assigned email error:', err.message));
+    }
 
     res.json(populated);
   } catch (err) {

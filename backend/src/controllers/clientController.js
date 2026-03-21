@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Order = require('../models/Order');
+const Driver = require('../models/Driver');
 
 // Get current client's profile
 async function getProfile(req, res) {
@@ -179,6 +180,36 @@ async function trackOrder(req, res) {
   }
 }
 
+// Get all online driver locations for map (client)
+async function getDriverLocations(req, res) {
+  try {
+    const drivers = await Driver.find({ isOnline: true })
+      .populate('user', 'fullName phone');
+
+    const locations = drivers
+      .filter(
+        (d) =>
+          d.location &&
+          d.location.coordinates &&
+          (d.location.coordinates[0] !== 0 || d.location.coordinates[1] !== 0),
+      )
+      .map((d) => ({
+        driverId: d._id,
+        fullName: d.user?.fullName || 'Driver',
+        phone: d.user?.phone || '',
+        vehicleType: d.vehicleType,
+        coordinates: d.location.coordinates, // [lng, lat]
+        rating: d.rating,
+        isOnline: d.isOnline,
+      }));
+
+    res.json(locations);
+  } catch (err) {
+    console.error('Client driver locations error:', err.message);
+    res.status(500).json({ message: 'Error loading driver locations' });
+  }
+}
+
 module.exports = {
   getProfile,
   getOrders,
@@ -186,5 +217,6 @@ module.exports = {
   getDashboard,
   updateProfile,
   trackOrder,
+  getDriverLocations,
 };
 

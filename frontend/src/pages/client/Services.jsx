@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { getAdminDriverLocations } from '../../api';
+import { getClientDriverLocations } from '../../api';
 
 // Fix default Leaflet marker icons when bundled with Vite/Webpack
 delete L.Icon.Default.prototype._getIconUrl;
@@ -24,7 +24,7 @@ const LiveDriversMap = () => {
 
   const fetchDrivers = async () => {
     try {
-      const data = await getAdminDriverLocations();
+      const data = await getClientDriverLocations();
       setDrivers(Array.isArray(data) ? data.filter(d => d.coordinates?.[0] && d.coordinates?.[1]) : []);
     } catch {
       // silently fail — map still renders without markers

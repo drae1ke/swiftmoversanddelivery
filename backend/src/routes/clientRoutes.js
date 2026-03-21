@@ -27,4 +27,11 @@ router.get(
   clientController.trackOrder,
 );
 
+router.get(
+  '/driver-locations',
+  authenticate,
+  authorizeRoles('client'),
+  clientController.getDriverLocations,
+);
+
 module.exports = router;

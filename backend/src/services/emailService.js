@@ -8,7 +8,7 @@ function getTransporter() {
   transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
+    secure: process.env.SMTP_SECURE === 'false',
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -231,6 +231,73 @@ async function sendDriverRatingEmail({ to, driverName, rating, comment }) {
   }
 }
 
+async function sendDriverAcceptedEmail({
+  to,
+  recipientName,
+  clientName,
+  order,
+  driver,
+}) {
+  if (!to) return;
+
+  const from = process.env.SMTP_FROM || 'no-reply@swiftmovers.local';
+  const trackingId = order._id?.toString().toUpperCase().slice(-8);
+  const subject = `Your Delivery is On Its Way! Tracking #${trackingId}`;
+
+  const driverFullName = driver?.user?.fullName || driver?.fullName || 'Your driver';
+  const driverPhone = driver?.user?.phone || driver?.phone || '—';
+  const vehicleType = driver?.vehicleType || '—';
+  const plateNumber = driver?.plateNumber || '—';
+  const rating = driver?.rating ? `${Number(driver.rating).toFixed(1)} / 5.0 ⭐` : '—';
+
+  const trackUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/Client`;
+
+  const lines = [
+    `Hello ${recipientName || 'there'},`,
+    '',
+    `Great news! A delivery is on its way to you from ${clientName || 'a SwiftDeliver customer'}.`,
+    '',
+    '─────────────────────────────',
+    '  TRACKING INFORMATION',
+    '─────────────────────────────',
+    `  Tracking Number : #${trackingId}`,
+    `  Pickup Address  : ${order.pickupAddress}`,
+    `  Delivery Address: ${order.dropoffAddress}`,
+    `  Service Type    : ${order.serviceType || 'Standard'}`,
+    '',
+    '─────────────────────────────',
+    '  YOUR DRIVER',
+    '─────────────────────────────',
+    `  Name            : ${driverFullName}`,
+    `  Phone           : ${driverPhone}`,
+    `  Vehicle Type    : ${vehicleType}`,
+    `  Plate Number    : ${plateNumber}`,
+    `  Driver Rating   : ${rating}`,
+    '',
+    '─────────────────────────────',
+    '',
+    `You can track your delivery in real time at:`,
+    trackUrl,
+    '',
+    `If you have questions, please contact us or call your driver directly on ${driverPhone}.`,
+    '',
+    'Thank you for choosing SwiftDeliver!',
+    'The SwiftDeliver Team',
+  ];
+
+  try {
+    const transport = getTransporter();
+    await transport.sendMail({
+      from,
+      to,
+      subject,
+      text: lines.join('\n'),
+    });
+  } catch (err) {
+    console.error('Error sending driver-accepted email to recipient:', err.message);
+  }
+}
+
 module.exports = {
   sendOrderArrivalEmail,
   sendPasswordResetEmail,
@@ -239,4 +306,5 @@ module.exports = {
   sendOrderInTransitEmail,
   sendProfileIncompleteEmail,
   sendDriverRatingEmail,
+  sendDriverAcceptedEmail,
 };

@@ -25,6 +25,11 @@ const orderSchema = new mongoose.Schema(
     recipientPhone: {
       type: String,
     },
+    recipientEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
     distanceKm: {
       type: Number,
       required: true,

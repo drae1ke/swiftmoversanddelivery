@@ -10,6 +10,7 @@ const Delivery = ({ isActive, onShowPage }) => {
     dropoffAddress: '',
     recipientName: '',
     recipientPhone: '',
+    recipientEmail: '',
     packageWeightKg: '',
     vehicleType: 'bike',
     serviceType: 'Standard',
@@ -36,6 +37,7 @@ const Delivery = ({ isActive, onShowPage }) => {
         dropoffAddress: formData.dropoffAddress,
         recipientName: formData.recipientName,
         recipientPhone: formData.recipientPhone,
+        recipientEmail: formData.recipientEmail,
         distanceKm: 10,
         packageWeightKg: Number(formData.packageWeightKg),
         vehicleType: formData.vehicleType,
@@ -56,6 +58,7 @@ const Delivery = ({ isActive, onShowPage }) => {
       dropoffAddress: '',
       recipientName: '',
       recipientPhone: '',
+      recipientEmail: '',
       packageWeightKg: '',
       vehicleType: 'bike',
       serviceType: 'Standard',
@@ -118,6 +121,19 @@ const Delivery = ({ isActive, onShowPage }) => {
                     onChange={(e) => setFormData({ ...formData, recipientPhone: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="field">
+                <label>Recipient Email (optional)</label>
+                <input
+                  type="email"
+                  placeholder="e.g. recipient@email.com"
+                  value={formData.recipientEmail}
+                  onChange={(e) => setFormData({ ...formData, recipientEmail: e.target.value })}
+                />
+                <span className="form-hint">
+                  If provided, the recipient will receive an email with tracking and driver details when a driver accepts the order.
+                </span>
               </div>
 
               <div className="field">
